@@ -1,7 +1,6 @@
 ## This file needs to be adedpted to use playwrightauthor
 
 import asyncio
-import re
 
 from playwright.async_api import Playwright, async_playwright, expect
 

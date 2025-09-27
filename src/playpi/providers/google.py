@@ -2,7 +2,6 @@
 """Google Gemini provider for PlayPi package."""
 
 import asyncio
-from typing import Optional
 
 from loguru import logger
 from playwright.async_api import Page, TimeoutError

@@ -10,17 +10,14 @@ the responses and related citations, with both file-based and direct question op
 from __future__ import annotations
 
 import asyncio
-import html
 import locale
 import logging
 import re
-import time
 from abc import ABC, abstractmethod
 from collections import OrderedDict
 from collections.abc import Callable, Coroutine
 from datetime import datetime
 from pathlib import Path
-from typing import List
 from urllib.parse import urlparse, urlunparse
 
 import nodriver as nd

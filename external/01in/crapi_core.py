@@ -7,14 +7,12 @@ import locale
 import logging
 import multiprocessing
 import pickle
-import re
 import ssl
 import time
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from collections.abc import Callable
 from datetime import datetime
-from typing import TYPE_CHECKING, List
-from urllib.parse import urlparse, urlunparse
+from typing import TYPE_CHECKING
 
 import undetected_chromedriver as uc
 from bs4 import BeautifulSoup, NavigableString, Tag
@@ -210,12 +208,10 @@ class ChromeInterface:
     @abstractmethod
     def login(self, driver: WebDriver) -> None:
         """Log in to the AI service."""
-        pass
 
     @abstractmethod
     def interact(self, driver: WebDriver, question: str, **kwargs) -> AIResponse:
         """Interact with the AI service and return the response."""
-        pass
 
 
 class AIInterface:

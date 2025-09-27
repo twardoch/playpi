@@ -4,7 +4,6 @@
 import platform
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import List, Optional
 
 from platformdirs import user_data_dir
 

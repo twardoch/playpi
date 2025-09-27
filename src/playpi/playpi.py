@@ -6,8 +6,7 @@ Created by Adam Twardoch
 
 import logging
 from dataclasses import dataclass
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
 __version__ = "0.1.0"
 
