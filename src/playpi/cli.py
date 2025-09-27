@@ -7,16 +7,18 @@ from pathlib import Path
 
 import fire
 from rich.console import Console
-from rich.progress import Progress, SpinnerColumn, TextColumn
 
+from playpi.config import PlayPiConfig
 from playpi.exceptions import PlayPiError
 from playpi.providers.google import google_deep_research
+from playpi.session import create_session
 
 console = Console()
 
 
 def google_research(
     prompt: str,
+    *,
     output: str | None = None,
     headless: bool = True,
     timeout: int = 600,
@@ -63,11 +65,9 @@ def google_research(
 def test_session() -> None:
     """Test basic browser session functionality."""
     try:
-        from playpi.config import PlayPiConfig
-        from playpi.session import create_session
 
         async def _test():
-            config = PlayPiConfig(headless=True, verbose=True)
+            config = PlayPiConfig(verbose=True)
             async with create_session(config) as session:
                 page = await session.get_page()
                 await page.goto("https://httpbin.org/json")

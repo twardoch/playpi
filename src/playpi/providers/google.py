@@ -2,14 +2,18 @@
 """Google Gemini provider for PlayPi package."""
 
 import asyncio
+import sys
 
 from loguru import logger
-from playwright.async_api import Page, TimeoutError
+from playwright.async_api import Page
+from playwright.async_api import TimeoutError as PlaywrightTimeoutError
 
 from playpi.config import PlayPiConfig
 from playpi.exceptions import AuthenticationError, PlayPiTimeoutError, ProviderError
 from playpi.html import extract_research_content, html_to_markdown
 from playpi.session import create_session
+
+RESEARCH_CONTENT_MIN_LENGTH = 50_000
 
 
 async def google_deep_research(
@@ -24,7 +28,8 @@ async def google_deep_research(
 
     Args:
         prompt: Research query
-        headless: Run browser in headless mode
+        headless: Retained for compatibility. playwrightauthor currently operates
+            Chrome in headed mode, so this flag is ignored.
         timeout: Maximum wait time in seconds
         profile: Browser profile name for authentication (unused for now)
         verbose: Enable verbose logging
@@ -39,14 +44,18 @@ async def google_deep_research(
     """
     if verbose:
         logger.remove()
-        logger.add(lambda msg: print(msg, end=""), level="DEBUG")
+        logger.add(sys.stdout, level="DEBUG")
 
     logger.info(f"Starting Google Deep Research for: {prompt[:50]}...")
 
+    if headless:
+        logger.debug("playwrightauthor runs in headed mode; ignoring headless=True request")
+
     config = PlayPiConfig(
         headless=headless,
-        timeout=timeout * 1000,  # Convert to milliseconds
+        timeout=timeout * 1000,  # Convert to milliseconds for provider waits
         verbose=verbose,
+        profile=profile or "default",
     )
 
     try:
@@ -57,8 +66,8 @@ async def google_deep_research(
             logger.debug("Navigating to Gemini")
             await page.goto("https://gemini.google.com/u/0/app", timeout=30000)
 
-            # Check if we need authentication
-            await _check_authentication(page)
+            # Ensure the user is authenticated before interacting with UI
+            await _ensure_authenticated(page, timeout)
 
             # Enter the prompt
             logger.debug("Entering prompt")
@@ -70,7 +79,7 @@ async def google_deep_research(
 
             # Submit the research
             logger.debug("Submitting research")
-            await _submit_research(page)
+            await _submit_research(page, timeout)
 
             # Wait for research to complete
             logger.debug("Waiting for research completion")
@@ -84,7 +93,7 @@ async def google_deep_research(
             logger.info("Google Deep Research completed successfully")
             return markdown_result
 
-    except TimeoutError as e:
+    except PlaywrightTimeoutError as e:
         msg = f"Research timed out after {timeout} seconds"
         raise PlayPiTimeoutError(msg) from e
     except Exception as e:
@@ -93,29 +102,55 @@ async def google_deep_research(
         raise ProviderError(msg) from e
 
 
-async def _check_authentication(page: Page) -> None:
-    """Check if user is authenticated with Google."""
-    try:
-        # Wait a moment for page to load
-        await page.wait_for_load_state("networkidle", timeout=10000)
+async def _ensure_authenticated(page: Page, timeout: int) -> None:
+    """Prompt the user to authenticate with Gemini if required.
 
-        # Check for login indicators
+    Args:
+        page: Active Playwright page.
+        timeout: Overall research timeout (seconds). Login wait is capped.
+    """
+
+    login_deadline = asyncio.get_running_loop().time() + min(timeout, 60)
+    prompt_displayed = False
+
+    while True:
+        try:
+            await page.wait_for_load_state("networkidle", timeout=10000)
+        except PlaywrightTimeoutError:
+            logger.debug("Waiting for Gemini load state timed out; retrying")
+            # Continue probing authentication state
+
+        if await _has_chat_interface(page):
+            return
+
         current_url = page.url
+        if not prompt_displayed:
+            logger.warning(
+                "Gemini chat interface not available. Please complete the login "
+                "flow in the open Chrome window. Once the chat input appears, "
+                "the automation will continue automatically."
+            )
+            prompt_displayed = True
+
         if "accounts.google.com" in current_url or "signin" in current_url:
-            msg = "Not authenticated with Google. Please log in to Google/Gemini first."
+            logger.info("Gemini redirected to Google sign-in page; waiting for login...")
+
+        if asyncio.get_running_loop().time() > login_deadline:
+            msg = "Gemini chat interface not found after waiting for login."
             raise AuthenticationError(msg)
 
-        # Check for the main chat interface
+        await asyncio.sleep(2)
+
+
+async def _has_chat_interface(page: Page) -> bool:
+    """Return True if the Gemini chat textbox is present."""
+
+    try:
         chat_input = page.locator('[role="textbox"]').first
-        if await chat_input.count() == 0:
-            msg = "Gemini chat interface not found. Please ensure you're logged in."
-            raise AuthenticationError(msg)
-
-    except Exception as e:
-        if isinstance(e, AuthenticationError):
-            raise
-        msg = f"Failed to check authentication: {e}"
-        raise ProviderError(msg) from e
+        return await chat_input.count() > 0
+    except Exception as exc:  # pragma: no cover - locator lookup is best-effort
+        logger.debug(f"Chat interface probe failed: {exc}")
+        return False
 
 
 async def _enter_prompt(page: Page, prompt: str) -> None:
@@ -147,10 +182,35 @@ async def _activate_deep_research(page: Page) -> None:
         # Wait a moment for the menu to appear
         await asyncio.sleep(1)
 
-        # Click Deep Research option
-        deep_research_button = page.get_by_role("button", name="Deep Research")
-        await deep_research_button.wait_for(state="visible", timeout=10000)
-        await deep_research_button.click()
+        # Wait for the drawer overlay to appear so we scope our selector correctly
+        # and avoid matching historical "Deep Research" messages.
+        drawer_overlay = page.locator("mat-card:has(toolbox-drawer)")
+        await drawer_overlay.wait_for(state="visible", timeout=10000)
+
+        toolbox_drawer = drawer_overlay.locator("toolbox-drawer")
+        deep_research_button = toolbox_drawer.locator(
+            "toolbox-drawer-item button[mat-list-item]:has-text('Deep Research')"
+        )
+
+        if await deep_research_button.count() == 0:
+            deep_research_button = toolbox_drawer.locator(
+                "toolbox-drawer-item button:has(.label:has-text('Deep Research'))"
+            )
+
+        button = deep_research_button.first
+        await button.wait_for(state="visible", timeout=10000)
+        await button.click()
+
+        # Some localizations toggle aria-pressed after a short delay. Waiting keeps
+        # us from submitting before Deep Research mode is active.
+        try:
+            await page.wait_for_function(
+                "el => el.getAttribute('aria-pressed') === 'true'",
+                arg=button,
+                timeout=2000,
+            )
+        except PlaywrightTimeoutError:
+            logger.debug("Deep Research button did not toggle aria-pressed in time")
 
         logger.debug("Deep Research activated")
 
@@ -159,7 +219,7 @@ async def _activate_deep_research(page: Page) -> None:
         raise ProviderError(msg) from e
 
 
-async def _submit_research(page: Page) -> None:
+async def _submit_research(page: Page, timeout: int) -> None:
     """Submit the research query."""
     try:
         # Click the send button
@@ -169,8 +229,11 @@ async def _submit_research(page: Page) -> None:
 
         # Wait for and click the confirmation button if it appears
         try:
-            confirm_button = page.locator('[data-test-id="confirm-button"]')
-            await confirm_button.wait_for(state="visible", timeout=15000)
+            confirmation_widget = page.locator("deep-research-confirmation-widget")
+            await confirmation_widget.wait_for(state="visible", timeout=timeout * 1000)
+
+            confirm_button = confirmation_widget.locator('[data-test-id="confirm-button"]')
+            await confirm_button.wait_for(state="visible", timeout=timeout * 1000)
             await confirm_button.click()
             logger.debug("Clicked research confirmation")
         except Exception:
@@ -208,7 +271,7 @@ async def _wait_for_completion(page: Page, timeout: int) -> None:
 
         # Check if there's substantial content on the page
         content_length = len(await page.content())
-        if content_length > 50000:  # Arbitrary threshold for "substantial content"
+        if content_length > RESEARCH_CONTENT_MIN_LENGTH:
             logger.debug("Research appears complete based on content length")
             return
 

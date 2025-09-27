@@ -1,8 +1,6 @@
 # this_file: tests/test_html.py
 """Tests for HTML processing utilities."""
 
-import pytest
-
 from playpi.html import html_to_markdown
 
 

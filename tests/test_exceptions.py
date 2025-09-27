@@ -36,26 +36,22 @@ def test_exception_creation():
 
 def test_exception_raising():
     """Test that exceptions can be raised and caught."""
+    msg = "Test"
+
     with pytest.raises(PlayPiError):
-        msg = "Test"
         raise PlayPiError(msg)
 
     with pytest.raises(BrowserError):
-        msg = "Test"
         raise BrowserError(msg)
 
     with pytest.raises(AuthenticationError):
-        msg = "Test"
         raise AuthenticationError(msg)
 
     with pytest.raises(ProviderError):
-        msg = "Test"
         raise ProviderError(msg)
 
     with pytest.raises(SessionError):
-        msg = "Test"
         raise SessionError(msg)
 
     with pytest.raises(PlayPiTimeoutError):
-        msg = "Test"
         raise PlayPiTimeoutError(msg)

@@ -1,156 +1,119 @@
 # this_file: src/playpi/session.py
-"""Browser session management for PlayPi package."""
+"""Browser session management built on top of playwrightauthor."""
 
-from collections.abc import AsyncGenerator
-from contextlib import asynccontextmanager
+from __future__ import annotations
+
+import typing
+from contextlib import AsyncExitStack, asynccontextmanager
+from typing import TYPE_CHECKING, Self
 
 from loguru import logger
-from playwright.async_api import Browser, BrowserContext, Page, Playwright, async_playwright
+from playwrightauthor import AsyncBrowser
+from playwrightauthor.exceptions import PlaywrightAuthorError
+
+if TYPE_CHECKING:
+    from playwright.async_api import Browser, BrowserContext, Page
 
 from playpi.config import PlayPiConfig
 from playpi.exceptions import BrowserError, SessionError
 
 
 class PlayPiSession:
-    """Manages browser lifecycle and authentication state.
-
-    This class handles browser instances, contexts, and pages for automated
-    AI chat workflows. It provides session persistence and proper cleanup.
-    """
+    """Manage a single PlayPi browser session via playwrightauthor."""
 
     def __init__(self, config: PlayPiConfig | None = None) -> None:
-        """Initialize session with configuration.
-
-        Args:
-            config: Configuration object, uses defaults if None
-        """
         self.config = config or PlayPiConfig()
-        self._playwright: Playwright | None = None
+        self._exit_stack: AsyncExitStack | None = None
         self._browser: Browser | None = None
         self._context: BrowserContext | None = None
+        self._context_owned = False
         self._page: Page | None = None
+        self._page_owned = False
 
-    async def __aenter__(self) -> "PlayPiSession":
-        """Async context manager entry."""
+    async def __aenter__(self) -> Self:
         await self.start()
         return self
 
-    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
-        """Async context manager exit with cleanup."""
+    async def __aexit__(self, exc_type, exc, tb) -> None:
         await self.close()
 
     async def start(self) -> None:
-        """Start the browser session."""
-        if self._playwright is not None:
+        """Launch browser resources using playwrightauthor."""
+        if self._exit_stack is not None:
             logger.warning("Session already started")
             return
 
+        self._exit_stack = AsyncExitStack()
         try:
-            logger.debug("Starting Playwright")
-            self._playwright = await async_playwright().start()
+            logger.debug("Starting playwrightauthor AsyncBrowser")
+            async_browser = AsyncBrowser(**self.config.playwrightauthor_kwargs())
+            browser = await self._exit_stack.enter_async_context(async_browser)
+            self._browser = browser
 
-            logger.debug("Launching browser")
-            self._browser = await self._playwright.chromium.launch(**self.config.get_browser_launch_options())
+            logger.debug("Creating playwright context")
+            contexts = browser.contexts
+            logger.debug(f"Existing browser contexts detected: {len(contexts)}")
+            if contexts:
+                context = contexts[0]
+                self._context_owned = False
+            else:
+                context = await browser.new_context()
+                self._exit_stack.push_async_callback(context.close)
+                self._context_owned = True
+            self._context = context
 
-            logger.debug("Creating browser context")
-            self._context = await self._browser.new_context()
+            logger.debug("Opening new page")
+            page = await context.new_page()
+            await page.bring_to_front()
+            self._exit_stack.push_async_callback(page.close)
+            self._page = page
+            self._page_owned = True
 
-            logger.debug("Creating new page")
-            self._page = await self._context.new_page()
-
-            logger.info("Browser session started successfully")
-
-        except Exception as e:
+            logger.info("PlayPi session started")
+        except PlaywrightAuthorError as exc:  # pragma: no cover - bubble up descriptive message
             await self.close()
-            msg = f"Failed to start browser session: {e}"
-            raise BrowserError(msg) from e
+            msg = f"Failed to start playwrightauthor session: {exc}"
+            raise BrowserError(msg) from exc
+        except Exception as exc:  # pragma: no cover - safeguard for unexpected errors
+            await self.close()
+            msg = f"Failed to start browser session: {exc}"
+            raise BrowserError(msg) from exc
 
     async def get_page(self) -> Page:
-        """Get the current page.
-
-        Returns:
-            The current Playwright page instance
-
-        Raises:
-            SessionError: If session is not started
-        """
+        """Return the active Playwright page."""
         if self._page is None:
-            msg = "Session not started. Call start() first."
-            raise SessionError(msg)
+            message = "Session not started. Call start() first."
+            raise SessionError(message)
         return self._page
 
-    async def get_authenticated_page(self, provider: str) -> Page:
-        """Get authenticated page for a provider.
+    async def get_authenticated_page(self, _provider: str) -> Page:
+        """Return an authenticated page for the requested provider.
 
-        Args:
-            provider: Provider name (e.g., 'google')
-
-        Returns:
-            Authenticated page for the provider
-
-        Raises:
-            SessionError: If session is not started
+        playwrightauthor manages profiles internally; an explicit provider value is
+        currently unused but retained for compatibility with the public API.
         """
-        page = await self.get_page()
-
-        # Load persistent context/profile for this provider if it exists
-        profile_dir = self.config.profiles_dir / provider
-        if profile_dir.exists():
-            logger.debug(f"Loading profile for {provider} from {profile_dir}")
-            # Note: For now, we'll use the default context
-            # In a full implementation, we'd create provider-specific contexts
-
-        return page
+        return await self.get_page()
 
     async def close(self) -> None:
-        """Clean up browser resources."""
-        logger.debug("Closing browser session")
-
+        """Tear down all managed resources."""
         try:
-            if self._page:
-                logger.debug("Closing page")
-                await self._page.close()
-                self._page = None
-
-            if self._context:
-                logger.debug("Closing context")
-                await self._context.close()
-                self._context = None
-
-            if self._browser:
-                logger.debug("Closing browser")
-                await self._browser.close()
-                self._browser = None
-
-            if self._playwright:
-                logger.debug("Stopping Playwright")
-                await self._playwright.stop()
-                self._playwright = None
-
-            logger.info("Browser session closed successfully")
-
-        except Exception as e:
-            logger.error(f"Error closing browser session: {e}")
-            # Don't raise exception during cleanup
+            if self._exit_stack is not None:
+                await self._exit_stack.aclose()
+        finally:
+            self._exit_stack = None
+            self._browser = None
+            self._context = None
+            self._context_owned = False
+            self._page = None
+            self._page_owned = False
+            logger.info("PlayPi session closed")
 
 
 @asynccontextmanager
 async def create_session(
     config: PlayPiConfig | None = None,
-) -> AsyncGenerator[PlayPiSession, None]:
-    """Create a PlayPi session with automatic cleanup.
-
-    Args:
-        config: Configuration object, uses defaults if None
-
-    Yields:
-        PlayPiSession instance
-
-    Example:
-        async with create_session() as session:
-            page = await session.get_page()
-            await page.goto("https://example.com")
-    """
+) -> typing.AsyncGenerator[PlayPiSession]:
+    """Convenience async context manager for PlayPi sessions."""
     session = PlayPiSession(config)
     try:
         await session.start()

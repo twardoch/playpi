@@ -4,6 +4,9 @@ Project Structure:
 │   └── 📁 workflows
 │       ├── 📄 push.yml
 │       └── 📄 release.yml
+├── 📁 examples
+│   ├── 📁 output
+│   └── 📄 google_deep_research.py
 ├── 📁 external
 │   ├── 📁 01in
 │   │   ├── 📄 crapi_core.py
@@ -48,9 +51,9 @@ Project Structure:
 │       ├── 📄 __init__.py
 │       ├── 📄 cli.py
 │       ├── 📄 config.py
+│       ├── 📄 example_prompts.py
 │       ├── 📄 exceptions.py
 │       ├── 📄 html.py
-│       ├── 📄 playpi.py
 │       └── 📄 session.py
 ├── 📁 tests
 │   ├── 📄 __init__.py
@@ -1691,402 +1694,41 @@ tasks</item><item><code inline="true">/work</code> - Enter continuous work mode 
 <document index="11">
 <source>PLAN.md</source>
 <document_content>
-# PlayPi Package Implementation Plan
+---
+this_file: PLAN.md
+---
 
-## Problem Analysis
-We need to implement a Python package that provides simple, high-level functions for automating browser-based AI chat workflows. The specifications reference `playwrightauthor` extensively, but this package doesn't exist publicly. We need to implement equivalent session management and browser automation functionality ourselves using standard Playwright.
+# Fix Google Deep Research Automation
 
-## Constraints
-- Must use `hatch` and `hatch-vcs` for build system
-- Must use `uv` for dependency management
-- Must use `ruff` for linting
-- Must focus on lean, clean, performant code
-- Max 3 concurrent browser sessions by default
-- Browser memory usage limitations
-- Cross-platform compatibility (Windows, macOS, Linux)
+## Goal
+Ensure `google_deep_research` reliably activates Gemini's Deep Research workflow end-to-end: prompt entry → deep-research toggle → message submission → confirmation → completion wait.
 
-## Solution Options
-1. **Build from scratch** - Implement all browser management and session handling ourselves
-2. **Minimal wrapper** - Use standard Playwright with basic session management
-3. **Hybrid approach** - Implement core session management while leveraging existing patterns
+## Required Changes
+1. **Prompt Entry Timing**
+   - After navigating to `https://gemini.google.com/u/0/app`, wait only for the editable prompt field to become ready and enter the prompt immediately.
+   - Avoid unnecessary idle waits before interacting with the input box.
 
-**Selected**: Hybrid approach - implement core session management with proven patterns from the example code.
+2. **Deep Research Toggle**
+   - Target the button at `toolbox-drawer-item button[mat-list-item]` within `mat-card:has(toolbox-drawer)`.
+   - Ensure we actually click the button (not just highlight it) and confirm `aria-pressed="true"` or similar state indicating Deep Research mode is active.
 
-## Edge Cases
-- Browser crashes during long-running operations
-- Network timeouts during authentication
-- UI layout changes on target websites
-- Multiple concurrent sessions exceeding memory limits
-- Authentication token expiration
-- Cross-platform browser installation differences
+3. **Message Submission**
+   - Click the send button inside the `.send-button-container` (`button[data-test-id='send-button']` equivalent / existing selector) immediately after Deep Research mode is confirmed.
 
-## Test Strategy
-- Unit tests for core functions with mocked browser interactions
-- Integration tests with real browser instances (opt-in)
-- Smoke tests for basic workflows
-- Memory usage and performance benchmarks
-- Cross-platform compatibility tests
+4. **Confirmation Dialog**
+   - Wait for `deep-research-confirmation-widget` to appear.
+   - Click the `[data-test-id="confirm-button"]` button inside the widget (text may be localized, e.g., "Zacznij wyszukiwanie").
 
-## Implementation Plan
+5. **Research Progress Wait**
+   - Keep waiting for the completion condition (existing `_wait_for_completion`) after confirmation so we capture the final Markdown response.
 
-### Phase 1: Core Infrastructure (Priority 1)
+6. **Error Handling & Logging**
+   - Log distinct debug messages for each stage (prompt fill, toggle click, send click, confirmation click) to simplify troubleshooting.
 
-#### 1.1 Project Setup
-- **Package Structure**: Create standard Python package structure with `src/playpi/`
-- **Build System**: Configure `hatch` with `hatch-vcs` for git-tag-based versioning
-- **Dependencies**: Set up `uv` for dependency management with core packages:
-  - `playwright` - Browser automation
-  - `pydantic` - Data validation and serialization
-  - `rich` - Terminal output formatting
-  - `fire` - CLI interface
-  - `loguru` - Structured logging
-  - `html2text` - HTML to Markdown conversion
-  - `asyncio` - Async support
-- **Development Tools**: Configure `ruff`, `pytest`, `pytest-cov`, `pytest-asyncio`
+## Validation
+- Manual run: `./examples/google_deep_research.py` should complete both prompts and save outputs.
+- Automated: `uv run pytest tests/test_google_provider.py -k deep` continues to pass.
 
-#### 1.2 Core Session Management (`src/playpi/session.py`)
-Replace the missing `playwrightauthor` functionality with our own implementation:
-
-```python
-class PlayPiSession:
-    """Manages browser lifecycle and authentication state"""
-
-    async def __aenter__(self) -> 'PlayPiSession':
-        """Async context manager entry"""
-
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
-        """Ensure cleanup on exit"""
-
-    async def get_authenticated_page(self, provider: str) -> Page:
-        """Get authenticated page for provider"""
-
-    async def close(self):
-        """Clean shutdown of browser resources"""
-```
-
-**Key Features:**
-- **Browser Lifecycle**: Automatic Chrome installation and process management
-- **Authentication State**: Persistent browser profiles for session reuse
-- **Resource Management**: Proper cleanup and memory management
-- **Cross-Platform**: Platform-specific optimizations (macOS GPU sandbox, Windows viewport, Linux headless)
-
-#### 1.3 Configuration System (`src/playpi/config.py`)
-```python
-@dataclass
-class PlayPiConfig:
-    headless: bool = True
-    timeout: int = 30000
-    max_concurrent: int = 3
-    browser_args: List[str] = field(default_factory=list)
-    user_data_dir: Optional[Path] = None
-    profiles_dir: Optional[Path] = None
-    verbose: bool = False
-```
-
-#### 1.4 Exception Hierarchy (`src/playpi/exceptions.py`)
-```python
-class PlayPiError(Exception): pass
-class BrowserError(PlayPiError): pass
-class AuthenticationError(PlayPiError): pass
-class ProviderError(PlayPiError): pass
-class SessionError(PlayPiError): pass
-class PlayPiTimeoutError(PlayPiError): pass
-```
-
-### Phase 2: Google Deep Research Implementation (Priority 1)
-
-#### 2.1 Provider Base Class (`src/playpi/providers/base.py`)
-
-#### 2.2 Google Gemini Provider (`src/playpi/providers/google.py`)
-Based on the existing script in `external/01in/playwright-google-deep-research.py`:
-
-```python
-async def google_deep_research(
-    prompt: str,
-    *,
-    headless: bool = True,
-    timeout: int = 600,
-    profile: Optional[str] = None
-) -> str:
-    """
-    Perform Google Gemini Deep Research
-
-    Args:
-        prompt: Research query
-        headless: Run browser in headless mode
-        timeout: Maximum wait time in seconds
-        profile: Browser profile name for authentication
-
-    Returns:
-        Research result as Markdown string
-
-    Raises:
-        AuthenticationError: If Google authentication fails
-        PlayPiTimeoutError: If research exceeds timeout
-        ProviderError: If UI elements not found
-    """
-```
-
-**Implementation Steps:**
-1. Navigate to `https://gemini.google.com/u/0/app`
-2. Handle authentication (manual login required first time)
-3. Enter prompt in text area: `page.get_by_role("textbox", name="Enter a prompt here")`
-4. Click Tools button and select Deep Research
-5. Submit prompt and wait for confirmation dialog
-6. Click confirm button to start research
-7. Wait for completion (export button becomes available)
-8. Extract result HTML and convert to Markdown
-9. Return cleaned Markdown text
-
-#### 2.3 HTML Processing (`src/playpi/html.py`)
-```python
-def html_to_markdown(html_content: str) -> str:
-    """Convert HTML content to clean Markdown"""
-
-def extract_research_content(page: Page) -> str:
-    """Extract research content from page"""
-```
-
-### Phase 3: Session Management & Connection Pooling (Priority 2)
-
-#### 3.1 Session Pool (`src/playpi/pool.py`)
-```python
-class SessionPool:
-    """Manage pool of browser sessions with max concurrency limits"""
-
-    def __init__(self, max_concurrent: int = 3):
-        self.semaphore = asyncio.Semaphore(max_concurrent)
-        self.sessions: Dict[str, PlayPiSession] = {}
-
-    async def acquire_session(self, provider: str) -> PlayPiSession:
-        """Get or create session for provider"""
-
-    async def release_session(self, provider: str):
-        """Return session to pool"""
-
-    async def cleanup(self):
-        """Close all sessions"""
-```
-
-#### 3.2 Concurrent Execution
-Implement semaphore-based concurrency control from the example in `issues/101.md`:
-
-```python
-class ResearchRunner:
-    def __init__(self, max_concurrent=3):
-        self.semaphore = asyncio.Semaphore(max_concurrent)
-
-    async def run_single_research(self, research_id, query):
-        async with self.semaphore:  # Ensures only 3 run at once
-            # Actual research logic here
-```
-
-### Phase 4: CLI Interface & Additional Features (Priority 3)
-
-#### 4.1 CLI Interface (`src/playpi/cli.py`)
-```python
-def main():
-    """Main CLI entry point using Fire"""
-
-def google_deep_research_cli(prompt: str, **kwargs):
-    """CLI wrapper for google_deep_research"""
-
-def batch_research(prompts_file: str, **kwargs):
-    """Process multiple research queries from file"""
-```
-
-#### 4.2 Additional Providers (Future)
-- `src/playpi/providers/chatgpt.py` - OpenAI ChatGPT integration
-- `src/playpi/providers/claude.py` - Anthropic Claude integration
-
-### Phase 5: Testing & Quality Assurance (Priority 1)
-
-#### 5.1 Test Structure
-```
-tests/
-├── test_session.py           # Session management tests
-├── test_google_provider.py   # Google Deep Research tests
-├── test_html_processing.py   # HTML conversion tests
-├── test_pool.py             # Connection pooling tests
-├── test_cli.py              # CLI interface tests
-└── conftest.py              # Pytest configuration
-```
-
-#### 5.2 Test Categories
-1. **Unit Tests**: Mock browser interactions, test individual functions
-2. **Integration Tests**: Real browser automation (opt-in with `pytest -m integration`)
-3. **Performance Tests**: Memory usage, response times, concurrent sessions
-4. **Cross-Platform Tests**: Windows, macOS, Linux compatibility
-
-#### 5.3 Test Requirements
-- 90%+ test coverage
-- All functions must have tests
-- Mock external dependencies in unit tests
-- Use `pytest-playwright` for browser tests, enabling video/trace recording on failure to simplify debugging.
-- Performance benchmarks for memory and timing
-
-### Phase 6: Documentation & Packaging
-
-#### 6.1 Documentation Files
-- `README.md` - Quick start guide (under 200 lines)
-- `DEPENDENCIES.md` - Package dependencies and justification
-- `CHANGELOG.md` - Version history
-- `docs/` - Detailed documentation
-
-#### 6.2 Package Configuration
-- `pyproject.toml` - Hatch configuration with `hatch-vcs`
-- `src/playpi/__init__.py` - Public API exports
-- Version from git tags using `hatch-vcs`
-
-## Technical Architecture
-
-### Package Structure
-```
-src/playpi/
-├── __init__.py              # Public API exports
-├── session.py               # Browser session management
-├── config.py                # Configuration classes
-├── exceptions.py            # Custom exceptions
-├── pool.py                  # Session pooling
-├── html.py                  # HTML processing utilities
-├── providers/               # LLM provider implementations
-│   ├── __init__.py
-│   ├── base.py             # Abstract base provider
-│   └── google.py           # Google Gemini provider
-└── cli.py                   # Command-line interface
-```
-
-### Public API
-```python
-# Simple function calls
-async def google_deep_research(prompt: str, **kwargs) -> str
-
-# Session-based usage
-async def open_session(provider: str, **kwargs) -> PlayPiSession
-
-# Multi-query processing
-async def batch_research(prompts: List[str], **kwargs) -> List[str]
-
-# Configuration
-def configure_playpi(**kwargs) -> None
-
-### Architectural Note
-The high-level functions (`google_deep_research`, `batch_research`) will internally use the `SessionPool` to acquire a `PlayPiSession`. This session provides an authenticated `Page` object, which is then passed to a provider-specific class (e.g., `GoogleGeminiProvider`) to manage UI interactions. This composes the low-level components into a simple, high-level API.
-```
-
-## Dependencies Strategy
-
-### Core Dependencies (Required)
-- `playwright` - Browser automation engine
-- `pydantic` - Data validation and configuration
-- `rich` - Terminal output formatting
-- `fire` - CLI interface generation
-- `loguru` - Structured logging
-- `html2text` - HTML to Markdown conversion
-
-### Development Dependencies
-- `pytest` - Testing framework
-- `pytest-cov` - Coverage reporting
-- `pytest-asyncio` - Async test support
-- `pytest-playwright` - Browser testing
-- `ruff` - Linting and formatting
-- `mypy` - Type checking
-
-### Build Dependencies
-- `hatch` - Build system
-- `hatch-vcs` - Git-based versioning
-- `uv` - Fast dependency resolution
-
-## Risk Mitigation
-
-### UI Drift Risk (High)
-- **Mitigation**: Store selectors as constants, verbose error messages with screenshots
-- **Detection**: Regular integration tests, user reports
-- **Response**: Fast selector updates, fallback strategies
-
-### Authentication Failures (Medium)
-- **Mitigation**: Clear setup instructions, helpful error messages
-- **Detection**: Test authentication flows regularly
-- **Response**: Detailed troubleshooting guides
-
-### Memory Issues (Medium)
-- **Mitigation**: Session pooling, automatic cleanup, monitoring
-- **Detection**: Memory usage tests, production monitoring
-- **Response**: Resource limits, garbage collection
-
-### Cross-Platform Issues (Low)
-- **Mitigation**: Platform-specific configurations, CI testing
-- **Detection**: Multi-platform test matrix
-- **Response**: Platform-specific workarounds
-
-### Anti-Bot Measures (Medium-High)
-- **Risk**: Websites may employ CAPTCHAs, rate limiting, or other anti-automation techniques.
-- **Mitigation**: Use robust, human-like interaction patterns. For CAPTCHAs, the primary mitigation is reusing authenticated sessions where challenges are less frequent. The system should detect challenges and exit gracefully with a clear error.
-- **Detection**: Integration tests failing on new, unexpected UI elements or prompts.
-- **Response**: Update automation logic. For persistent blocks, this may require manual intervention or exploring alternative providers/APIs.
-
-## Success Criteria
-
-### Functional Requirements
-- ✅ Single function call for Google Deep Research
-- ✅ Session persistence and reuse
-- ✅ Cross-platform compatibility
-- ✅ Robust error handling and recovery
-- ✅ Memory efficient concurrent execution
-
-### Performance Requirements
-- ✅ < 10 second initial session startup
-- ✅ < 3 second subsequent interactions
-- ✅ Support for 3 concurrent sessions
-- ✅ Memory usage < 300MB per session
-- ✅ 95% success rate for basic operations
-
-### Quality Requirements
-- ✅ 90%+ test coverage
-- ✅ Type hints throughout codebase
-- ✅ Comprehensive documentation
-- ✅ Semantic versioning compliance
-- ✅ Clean code standards (functions < 20 lines, files < 200 lines)
-
-## Implementation Timeline (Revised to 6 Weeks for Realism)
-
-*Browser automation is often unpredictable. This revised timeline allocates more time for testing, debugging, and documentation throughout the process.*
-
-### Sprint 1 (Weeks 1-2): Core & Google Provider
-- **Goal**: A working `google_deep_research` function for a single query.
-- **Tasks**:
-    - Project setup (`hatch`, `uv`, `ruff`).
-    - Implement `PlayPiSession`, `PlayPiConfig`, and `PlayPiError` hierarchy.
-    - Implement the `google_deep_research` workflow, including authentication and HTML processing.
-    - **Testing**: Write unit tests for config and HTML processing. Write an initial integration test for the full Google workflow.
-
-### Sprint 2 (Weeks 3-4): Concurrency & Robustness
-- **Goal**: Support for robust, concurrent research tasks.
-- **Tasks**:
-    - Implement `SessionPool` for concurrent browser management.
-    - Refactor `google_deep_research` and implement `batch_research` to use the pool.
-    - Implement comprehensive error handling and logging.
-    - **Testing**: Write unit and integration tests for the session pool. Add tests for failure cases (e.g., auth failure, timeout). Aim for 70% coverage.
-
-### Sprint 3 (Weeks 5-6): CLI, Docs & Release
-- **Goal**: A polished, installable package.
-- **Tasks**:
-    - Implement the CLI using `fire`.
-    - Write all user-facing documentation (`README.md`, etc.).
-    - Finalize packaging configuration (`pyproject.toml`).
-    - **Testing**: Write tests for the CLI. Perform full cross-platform testing. Run performance benchmarks. Increase test coverage to 90%+.
-    - Prepare for `v0.1.0` release.
-
-## Next Steps
-
-1. **Initialize Project**: Set up package structure with `hatch` and `uv`
-2. **Core Session Management**: Implement `PlayPiSession` class
-3. **Google Provider**: Build working Google Deep Research function
-4. **Testing**: Write comprehensive test suite
-5. **Documentation**: Create user and developer documentation
-6. **Release**: Package and distribute v0.1.0
-
-This plan provides a solid foundation for implementing the PlayPi package while maintaining simplicity and focusing on the core functionality of browser automation for AI chat workflows.
 </document_content>
 </document>
 
@@ -2311,7 +1953,7 @@ tasks</item><item><code inline="true">/work</code> - Enter continuous work mode 
 
 Automate AI chat workflows through browser automation.
 
-PlayPi provides simple, high-level functions for automating browser-based AI chat workflows, starting with Google Gemini Deep Research.
+PlayPi provides simple, high-level functions for automating browser-based AI chat workflows, starting with Google Gemini Deep Research. The package delegates all browser lifecycle management to the [`playwrightauthor`](https://pypi.org/project/playwrightauthor/) library, so Chrome for Testing installation and profile handling happen automatically.
 
 ## Installation
 
@@ -2339,7 +1981,7 @@ async def main():
     # Perform deep research on a topic
     result = await google_deep_research(
         "Analyze the impact of quantum computing on cryptography",
-        headless=True,  # Run browser in background
+        headless=True,  # Retained for compatibility; playwrightauthor runs headed
         timeout=600,    # 10 minute timeout
         verbose=True    # Enable detailed logging
     )
@@ -2355,8 +1997,8 @@ asyncio.run(main())
 # Perform research and save to file
 playpi google "What are the latest developments in renewable energy?" --output research.md
 
-# Interactive mode (visible browser)
-playpi google "Climate change mitigation strategies" --headless=false --verbose
+# Headless flag is currently ignored (playwrightauthor manages a visible Chrome instance)
+playpi google "Climate change mitigation strategies" --verbose
 
 # Test browser session
 playpi test
@@ -2368,14 +2010,13 @@ playpi test
 
 Before using Google Deep Research, you need to:
 
-1. **Install Playwright browsers**: `playwright install chromium`
-2. **Login to Google**: Open https://gemini.google.com in your browser and sign in
-3. **Browser profiles**: PlayPi reuses browser sessions, so you only need to login once
+1. **Login to Google**: Open https://gemini.google.com in your browser and sign in
+2. **Browser profiles**: PlayPi relies on playwrightauthor-managed profiles, so you only need to login once in the selected profile
 
 ### System Requirements
 
 - Python 3.12+
-- Chromium browser (installed automatically)
+- Chrome for Testing (downloaded automatically by playwrightauthor)
 - 2GB+ RAM for browser automation
 - Internet connection
 
@@ -2396,10 +2037,10 @@ Perform Google Gemini Deep Research on a given prompt.
 
 **Parameters:**
 - `prompt` (str): Research query or question
-- `headless` (bool): Run browser in headless mode (default: True)
+- `headless` (bool): Retained for compatibility; playwrightauthor currently launches Chrome in headed mode (default: True)
 - `timeout` (int): Maximum wait time in seconds (default: 600)
 - `verbose` (bool): Enable detailed logging (default: False)
-- `profile` (str): Browser profile name (reserved for future use)
+- `profile` (str): Browser profile name managed by playwrightauthor (default: `"default"`)
 
 **Returns:**
 - `str`: Research results formatted as Markdown
@@ -2440,208 +2081,25 @@ uv run mypy src/playpi
 ## License
 
 MIT License. See [LICENSE](LICENSE) for details.
+
 </document_content>
 </document>
 
 <document index="14">
 <source>TODO.md</source>
 <document_content>
-# PlayPi Implementation TODO List
+---
+this_file: TODO.md
+---
 
-## Sprint 1 (Weeks 1-2): Core & Google Provider
+- [ ] Update prompt-entry logic to type immediately after the input is ready.
+- [ ] Scope and click the Deep Research toggle within `mat-card:has(toolbox-drawer)` and confirm activation.
+- [ ] Click the send button after Deep Research mode is active.
+- [ ] Detect `deep-research-confirmation-widget` and click its `[data-test-id="confirm-button"]`.
+- [ ] Ensure we wait for Deep Research completion and capture the final Markdown response.
+- [ ] Add debug logs for each stage to support troubleshooting.
+- [ ] Re-run `./examples/google_deep_research.py` and `uv run pytest tests/test_google_provider.py -k deep` to validate.
 
-### Project Setup
-- [ ] Initialize Python package structure with `src/playpi/`
-- [ ] Configure `pyproject.toml` with hatch and hatch-vcs for git-tag-based versioning
-- [ ] Set up `uv` for dependency management
-- [ ] Add core dependencies: playwright, pydantic, rich, fire, loguru, html2text, asyncio
-- [ ] Add development dependencies: pytest, pytest-cov, pytest-asyncio, pytest-playwright, ruff, mypy
-- [ ] Configure ruff for linting and formatting
-- [ ] Set up basic package structure and __init__.py
-
-### Core Infrastructure
-- [ ] Create `src/playpi/exceptions.py` with custom exception hierarchy
-- [ ] Implement `PlayPiError`, `BrowserError`, `AuthenticationError`, `ProviderError`, `SessionError`, `PlayPiTimeoutError`
-- [ ] Create `src/playpi/config.py` with PlayPiConfig dataclass
-- [ ] Implement configuration for headless, timeout, max_concurrent, browser_args, user_data_dir, profiles_dir, verbose
-- [ ] Create `src/playpi/session.py` with PlayPiSession class
-- [ ] Implement async context manager (__aenter__, __aexit__)
-- [ ] Implement browser lifecycle management (launch, close, cleanup)
-- [ ] Implement authenticated page acquisition
-- [ ] Add cross-platform browser optimizations (macOS GPU sandbox, Windows viewport, Linux headless)
-
-### Google Provider Implementation
-- [ ] Create `src/playpi/providers/` directory structure
-- [ ] Create `src/playpi/providers/__init__.py`
-- [ ] Create `src/playpi/providers/base.py` (minimal interface)
-- [ ] Create `src/playpi/providers/google.py`
-- [ ] Implement `google_deep_research` function signature
-- [ ] Add navigation to `https://gemini.google.com/u/0/app`
-- [ ] Implement prompt input using `page.get_by_role("textbox", name="Enter a prompt here")`
-- [ ] Add Tools button click and Deep Research selection
-- [ ] Implement prompt submission and confirmation dialog handling
-- [ ] Add waiting for research completion (export button availability)
-- [ ] Implement result extraction and HTML processing
-
-### HTML Processing
-- [ ] Create `src/playpi/html.py`
-- [ ] Implement `html_to_markdown` function using html2text
-- [ ] Implement `extract_research_content` function for page content extraction
-- [ ] Add HTML cleaning and sanitization
-
-### Initial Testing
-- [ ] Create `tests/` directory structure
-- [ ] Create `tests/conftest.py` with pytest configuration
-- [ ] Create `tests/test_config.py` for configuration tests
-- [ ] Create `tests/test_session.py` for session management tests
-- [ ] Create `tests/test_html_processing.py` for HTML conversion tests
-- [ ] Create `tests/test_google_provider.py` for Google provider tests
-- [ ] Write initial integration test for full Google workflow
-- [ ] Set up test coverage reporting with pytest-cov
-
-## Sprint 2 (Weeks 3-4): Concurrency & Robustness
-
-### Session Pooling
-- [ ] Create `src/playpi/pool.py`
-- [ ] Implement `SessionPool` class with semaphore-based concurrency control
-- [ ] Add `acquire_session` and `release_session` methods
-- [ ] Implement session reuse and cleanup logic
-- [ ] Add max_concurrent configuration support
-- [ ] Implement automatic session health checking
-
-### Concurrent Execution
-- [ ] Refactor `google_deep_research` to use SessionPool
-- [ ] Implement `batch_research` function for multiple queries
-- [ ] Add asyncio.gather support for concurrent execution
-- [ ] Implement proper semaphore handling for max 3 concurrent sessions
-- [ ] Add progress tracking and reporting for batch operations
-
-### Error Handling & Logging
-- [ ] Implement comprehensive error handling throughout codebase
-- [ ] Add proper exception propagation and context
-- [ ] Configure loguru for structured logging
-- [ ] Add debug logging with screenshot capture on failures
-- [ ] Implement retry logic with exponential backoff
-- [ ] Add timeout handling and recovery strategies
-- [ ] Implement graceful degradation for UI changes
-
-### Robustness Testing
-- [ ] Write unit tests for SessionPool
-- [ ] Write integration tests for concurrent execution
-- [ ] Add tests for failure cases (auth failure, timeout, UI changes)
-- [ ] Add memory usage tests and benchmarks
-- [ ] Test session cleanup and resource management
-- [ ] Add cross-platform compatibility tests
-- [ ] Aim for 70% test coverage
-
-## Sprint 3 (Weeks 5-6): CLI, Docs & Release
-
-### CLI Implementation
-- [ ] Create `src/playpi/cli.py`
-- [ ] Implement main CLI entry point using Fire
-- [ ] Add `google_deep_research_cli` command
-- [ ] Implement `batch_research_cli` for file-based input
-- [ ] Add configuration options via CLI arguments
-- [ ] Add verbose mode and logging controls
-- [ ] Implement help text and usage examples
-
-### Package Configuration
-- [ ] Finalize `pyproject.toml` configuration
-- [ ] Set up proper entry points for CLI
-- [ ] Configure hatch-vcs for version management
-- [ ] Add package metadata and classifiers
-- [ ] Set up proper dependency specifications
-- [ ] Configure build system requirements
-
-### Documentation
-- [ ] Create `README.md` with quick start guide (under 200 lines)
-- [ ] Create `DEPENDENCIES.md` with package justification
-- [ ] Create `CHANGELOG.md` for version history
-- [ ] Write `docs/` directory with detailed documentation
-- [ ] Add usage examples and troubleshooting guide
-- [ ] Document authentication setup process
-- [ ] Add API reference with type hints
-
-### Comprehensive Testing
-- [ ] Write CLI tests using pytest
-- [ ] Add full cross-platform testing (Windows, macOS, Linux)
-- [ ] Run performance benchmarks for memory and timing
-- [ ] Test browser installation and setup across platforms
-- [ ] Add end-to-end integration tests
-- [ ] Enable video/trace recording on test failures
-- [ ] Increase test coverage to 90%+
-
-### Quality Assurance
-- [ ] Run full test suite across all platforms
-- [ ] Check code quality with ruff and mypy
-- [ ] Verify all functions have type hints
-- [ ] Ensure all functions under 20 lines
-- [ ] Ensure all files under 200 lines
-- [ ] Verify comprehensive docstrings
-- [ ] Check security with bandit
-
-### Release Preparation
-- [ ] Tag version v0.1.0 using git tags
-- [ ] Test package installation and distribution
-- [ ] Verify hatch-vcs version detection
-- [ ] Run final integration tests
-- [ ] Prepare release notes
-- [ ] Test package on clean environments
-
-## Additional Future Tasks (Beyond v0.1.0)
-
-### Additional Providers
-- [ ] Implement ChatGPT provider (`src/playpi/providers/chatgpt.py`)
-- [ ] Implement Claude provider (`src/playpi/providers/claude.py`)
-- [ ] Add provider factory pattern
-- [ ] Implement multi-provider interface
-
-### Advanced Features
-- [ ] Add conversation history tracking
-- [ ] Implement response caching
-- [ ] Add performance monitoring
-- [ ] Create web-based dashboard
-- [ ] Implement plugin system
-
-### Monitoring & Analytics
-- [ ] Add usage metrics collection
-- [ ] Implement health monitoring
-- [ ] Add performance benchmarking suite
-- [ ] Create monitoring dashboard
-
-## Testing Checklist
-
-### Unit Tests Required
-- [ ] Configuration classes and validation
-- [ ] Exception hierarchy
-- [ ] HTML processing functions
-- [ ] Session management logic
-- [ ] Pool management and concurrency
-- [ ] CLI argument parsing
-
-### Integration Tests Required
-- [ ] Full Google Deep Research workflow
-- [ ] Authentication flow testing
-- [ ] Concurrent session management
-- [ ] Error recovery scenarios
-- [ ] Cross-platform browser setup
-
-### Performance Tests Required
-- [ ] Memory usage under load
-- [ ] Response time benchmarks
-- [ ] Concurrent session limits
-- [ ] Resource cleanup verification
-- [ ] Browser startup time measurement
-
-### Quality Gates
-- [ ] 90%+ test coverage
-- [ ] All functions have tests
-- [ ] All functions have docstrings
-- [ ] All functions under 20 lines
-- [ ] All files under 200 lines
-- [ ] Zero ruff violations
-- [ ] Zero mypy errors
-- [ ] Zero security issues from bandit
 </document_content>
 </document>
 
@@ -2672,6 +2130,21 @@ uv pip install --system --upgrade -e .
 
 </document_content>
 </document>
+
+# File: /Users/adam/Developer/vcs/github.twardoch/pub/playpi/examples/google_deep_research.py
+# Language: python
+
+import asyncio
+from pathlib import Path
+from playpi import PlayPiError, google_deep_research
+from playpi.example_prompts import PROMPT_EN, PROMPT_PL
+
+def _run_single((prompt: str, destination: Path)) -> None:
+    """Execute a single research query and persist the Markdown output."""
+
+def main(()) -> None:
+    """Run the two deep-research tasks concurrently and save their outputs."""
+
 
 # File: /Users/adam/Developer/vcs/github.twardoch/pub/playpi/external/01in/crapi_core.py
 # Language: python
@@ -64466,7 +63939,7 @@ github_actions = true   # Add GitHub Actions workflows
 name = 'playpi' # Package name on PyPI
 description = 'Automate AI chat workflows through browser automation' # Short description
 readme = 'README.md' # Path to README file
-requires-python = '>=3.11' # Minimum Python version
+requires-python = '>=3.12' # Minimum Python version
 keywords = [
     "playwright", "automation", "ai", "chat", "gemini", "browser"
 ] # Keywords for PyPI search
@@ -64476,7 +63949,6 @@ dynamic = ["version"] # Fields set dynamically at build time
 classifiers = [
     'Development Status :: 3 - Alpha', # Package maturity level
     'Programming Language :: Python',
-    'Programming Language :: Python :: 3.11',
     'Programming Language :: Python :: 3.12',
     'Programming Language :: Python :: Implementation :: CPython',
     'Operating System :: OS Independent',
@@ -64495,6 +63967,7 @@ dependencies = [
     "loguru>=0.7.0",
     "html2text>=2020.1.16",
     "platformdirs>=3.0.0",
+    "playwrightauthor>=1.0.13",
 ]
 
 # Author information
@@ -64629,7 +64102,7 @@ fix = ["ruff check --fix --unsafe-fixes src/playpi tests", "ruff format --respec
 # Matrix configuration to test across multiple Python versions
 
 [[tool.hatch.envs.all.matrix]]
-python = ["3.10", "3.11", "3.12"]
+python = ["3.12"]
 
 #------------------------------------------------------------------------------
 # SPECIALIZED ENVIRONMENTS
@@ -64931,14 +64404,14 @@ import sys
 from pathlib import Path
 import fire
 from rich.console import Console
-from rich.progress import Progress, SpinnerColumn, TextColumn
+from playpi.config import PlayPiConfig
 from playpi.exceptions import PlayPiError
 from playpi.providers.google import google_deep_research
-from playpi.config import PlayPiConfig
 from playpi.session import create_session
 
 def google_research((
     prompt: str,
+    *,
     output: str | None = None,
     headless: bool = True,
     timeout: int = 600,
@@ -64958,28 +64431,20 @@ def main(()) -> None:
 # File: /Users/adam/Developer/vcs/github.twardoch/pub/playpi/src/playpi/config.py
 # Language: python
 
-import platform
-from dataclasses import dataclass, field
-from pathlib import Path
-from platformdirs import user_data_dir
+from dataclasses import dataclass
 
 class PlayPiConfig:
-    """Configuration for PlayPi browser automation."""
-    def __post_init__((self)) -> None:
-        """Set default paths and platform-specific browser arguments."""
-    def _get_platform_browser_args((self)) -> list[str]:
-        """Get platform-specific browser arguments."""
-    def get_browser_launch_options((self)) -> dict:
-        """Get browser launch options for Playwright."""
+    """User-adjustable settings for PlayPi sessions."""
+    def playwrightauthor_kwargs((self)) -> dict[str, object]:
+        """Return keyword arguments accepted by playwrightauthor context managers."""
 
-def __post_init__((self)) -> None:
-    """Set default paths and platform-specific browser arguments."""
+def playwrightauthor_kwargs((self)) -> dict[str, object]:
+    """Return keyword arguments accepted by playwrightauthor context managers."""
 
-def _get_platform_browser_args((self)) -> list[str]:
-    """Get platform-specific browser arguments."""
 
-def get_browser_launch_options((self)) -> dict:
-    """Get browser launch options for Playwright."""
+# File: /Users/adam/Developer/vcs/github.twardoch/pub/playpi/src/playpi/example_prompts.py
+# Language: python
+
 
 
 # File: /Users/adam/Developer/vcs/github.twardoch/pub/playpi/src/playpi/exceptions.py
@@ -65018,23 +64483,6 @@ def extract_research_content((page: Page)) -> str:
     """Extract research content from Google Gemini Deep Research page."""
 
 
-# File: /Users/adam/Developer/vcs/github.twardoch/pub/playpi/src/playpi/playpi.py
-# Language: python
-
-import logging
-from dataclasses import dataclass
-from typing import Any
-
-class Config:
-    """Configuration settings for playpi."""
-
-def process_data((data: list[Any], config: Config | None = None, *, debug: bool = False)) -> dict[str, Any]:
-    """Process the input data according to configuration."""
-
-def main(()) -> None:
-    """Main entry point for playpi."""
-
-
 # File: /Users/adam/Developer/vcs/github.twardoch/pub/playpi/src/playpi/providers/__init__.py
 # Language: python
 
@@ -65045,8 +64493,10 @@ from playpi.providers.google import google_deep_research
 # Language: python
 
 import asyncio
+import sys
 from loguru import logger
-from playwright.async_api import Page, TimeoutError
+from playwright.async_api import Page
+from playwright.async_api import TimeoutError as PlaywrightTimeoutError
 from playpi.config import PlayPiConfig
 from playpi.exceptions import AuthenticationError, PlayPiTimeoutError, ProviderError
 from playpi.html import extract_research_content, html_to_markdown
@@ -65062,8 +64512,11 @@ def google_deep_research((
 )) -> str:
     """Perform Google Gemini Deep Research."""
 
-def _check_authentication((page: Page)) -> None:
-    """Check if user is authenticated with Google."""
+def _ensure_authenticated((page: Page, timeout: int)) -> None:
+    """Prompt the user to authenticate with Gemini if required."""
+
+def _has_chat_interface((page: Page)) -> bool:
+    """Return True if the Gemini chat textbox is present."""
 
 def _enter_prompt((page: Page, prompt: str)) -> None:
     """Enter the research prompt in the text area."""
@@ -65071,7 +64524,7 @@ def _enter_prompt((page: Page, prompt: str)) -> None:
 def _activate_deep_research((page: Page)) -> None:
     """Activate the Deep Research tool."""
 
-def _submit_research((page: Page)) -> None:
+def _submit_research((page: Page, timeout: int)) -> None:
     """Submit the research query."""
 
 def _wait_for_completion((page: Page, timeout: int)) -> None:
@@ -65081,55 +64534,52 @@ def _wait_for_completion((page: Page, timeout: int)) -> None:
 # File: /Users/adam/Developer/vcs/github.twardoch/pub/playpi/src/playpi/session.py
 # Language: python
 
-from collections.abc import AsyncGenerator
-from contextlib import asynccontextmanager
+import typing
+from contextlib import AsyncExitStack, asynccontextmanager
+from typing import TYPE_CHECKING, Self
 from loguru import logger
-from playwright.async_api import Browser, BrowserContext, Page, Playwright, async_playwright
+from playwrightauthor import AsyncBrowser
+from playwrightauthor.exceptions import PlaywrightAuthorError
+from playwright.async_api import Browser, BrowserContext, Page
 from playpi.config import PlayPiConfig
 from playpi.exceptions import BrowserError, SessionError
 
 class PlayPiSession:
-    """Manages browser lifecycle and authentication state."""
+    """Manage a single PlayPi browser session via playwrightauthor."""
     def __init__((self, config: PlayPiConfig | None = None)) -> None:
-        """Initialize session with configuration."""
-    def __aenter__((self)) -> "PlayPiSession":
-        """Async context manager entry."""
-    def __aexit__((self, exc_type, exc_val, exc_tb)) -> None:
-        """Async context manager exit with cleanup."""
+    def __aenter__((self)) -> Self:
+    def __aexit__((self, exc_type, exc, tb)) -> None:
     def start((self)) -> None:
-        """Start the browser session."""
+        """Launch browser resources using playwrightauthor."""
     def get_page((self)) -> Page:
-        """Get the current page."""
-    def get_authenticated_page((self, provider: str)) -> Page:
-        """Get authenticated page for a provider."""
+        """Return the active Playwright page."""
+    def get_authenticated_page((self, _provider: str)) -> Page:
+        """Return an authenticated page for the requested provider."""
     def close((self)) -> None:
-        """Clean up browser resources."""
+        """Tear down all managed resources."""
 
 def __init__((self, config: PlayPiConfig | None = None)) -> None:
-    """Initialize session with configuration."""
 
-def __aenter__((self)) -> "PlayPiSession":
-    """Async context manager entry."""
+def __aenter__((self)) -> Self:
 
-def __aexit__((self, exc_type, exc_val, exc_tb)) -> None:
-    """Async context manager exit with cleanup."""
+def __aexit__((self, exc_type, exc, tb)) -> None:
 
 def start((self)) -> None:
-    """Start the browser session."""
+    """Launch browser resources using playwrightauthor."""
 
 def get_page((self)) -> Page:
-    """Get the current page."""
+    """Return the active Playwright page."""
 
-def get_authenticated_page((self, provider: str)) -> Page:
-    """Get authenticated page for a provider."""
+def get_authenticated_page((self, _provider: str)) -> Page:
+    """Return an authenticated page for the requested provider."""
 
 def close((self)) -> None:
-    """Clean up browser resources."""
+    """Tear down all managed resources."""
 
 def create_session((
     config: PlayPiConfig | None = None,
-)) -> AsyncGenerator[PlayPiSession, None]:
-    """Create a PlayPi session with automatic cleanup."""
+)) -> typing.AsyncGenerator[PlayPiSession]:
+    """Convenience async context manager for PlayPi sessions."""
 
 
 # File: /Users/adam/Developer/vcs/github.twardoch/pub/playpi/tests/__init__.py
@@ -65140,25 +64590,11 @@ def create_session((
 # File: /Users/adam/Developer/vcs/github.twardoch/pub/playpi/tests/test_config.py
 # Language: python
 
-import platform
-from pathlib import Path
-import pytest
 from playpi.config import PlayPiConfig
 
-def test_default_config(()):
-    """Test default configuration values."""
+def test_default_config_values(()):
 
-def test_custom_config(()):
-    """Test custom configuration values."""
-
-def test_browser_launch_options(()):
-    """Test browser launch options generation."""
-
-def test_platform_specific_args(()):
-    """Test platform-specific browser arguments."""
-
-def test_directories_created(()):
-    """Test that configuration directories are created."""
+def test_custom_config_values(()):
 
 
 # File: /Users/adam/Developer/vcs/github.twardoch/pub/playpi/tests/test_exceptions.py
@@ -65187,11 +64623,12 @@ def test_exception_raising(()):
 # File: /Users/adam/Developer/vcs/github.twardoch/pub/playpi/tests/test_google_provider.py
 # Language: python
 
+import inspect
 import pytest
+from playpi import google_deep_research as google_deep_research_public
+from playpi.example_prompts import PROMPT_EN
 from playpi.exceptions import AuthenticationError, ProviderError
 from playpi.providers.google import google_deep_research
-from playpi import google_deep_research as gdr
-import inspect
 
 def test_google_deep_research_import(()):
     """Test that google_deep_research can be imported."""
@@ -65209,7 +64646,6 @@ def test_google_deep_research_parameters(()):
 # File: /Users/adam/Developer/vcs/github.twardoch/pub/playpi/tests/test_html.py
 # Language: python
 
-import pytest
 from playpi.html import html_to_markdown
 
 def test_html_to_markdown_basic(()):
@@ -65242,23 +64678,20 @@ def test_version(()):
 
 import pytest
 from playpi.config import PlayPiConfig
-from playpi.exceptions import SessionError
+from playpi.exceptions import BrowserError, SessionError
 from playpi.session import PlayPiSession, create_session
 
+def _ensure_session((config: PlayPiConfig | None = None)) -> PlayPiSession:
+
 def test_session_lifecycle(()):
-    """Test basic session lifecycle."""
 
 def test_session_context_manager(()):
-    """Test session as async context manager."""
 
 def test_create_session_helper(()):
-    """Test create_session helper function."""
 
 def test_get_authenticated_page(()):
-    """Test getting authenticated page for a provider."""
 
 def test_session_with_default_config(()):
-    """Test session with default configuration."""
 
 
 </documents>

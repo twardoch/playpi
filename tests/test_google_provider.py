@@ -1,8 +1,12 @@
 # this_file: tests/test_google_provider.py
 """Tests for Google provider functionality."""
 
+import inspect
+
 import pytest
 
+from playpi import google_deep_research as google_deep_research_public
+from playpi.example_prompts import PROMPT_EN
 from playpi.exceptions import AuthenticationError, ProviderError
 from playpi.providers.google import google_deep_research
 
@@ -14,9 +18,7 @@ def test_google_deep_research_import():
 
 def test_google_deep_research_available_in_main_package():
     """Test that google_deep_research is available from main package."""
-    from playpi import google_deep_research as gdr
-
-    assert callable(gdr)
+    assert callable(google_deep_research_public)
 
 
 @pytest.mark.asyncio
@@ -25,16 +27,14 @@ async def test_google_deep_research_authentication_check():
     # This should fail with AuthenticationError since we're not logged in
     with pytest.raises((AuthenticationError, ProviderError)):
         await google_deep_research(
-            "Test query",
+            PROMPT_EN,
             headless=True,
-            timeout=10,  # Short timeout for testing
+            timeout=30,  # Allow extra time for login prompt
         )
 
 
 def test_google_deep_research_parameters():
     """Test that google_deep_research accepts expected parameters."""
-    import inspect
-
     sig = inspect.signature(google_deep_research)
     params = list(sig.parameters.keys())
 

@@ -30,9 +30,9 @@ def html_to_markdown(html_content: str) -> str:
     lines = markdown.split("\n")
     cleaned_lines = []
 
-    for line in lines:
+    for raw_line in lines:
         # Remove excessive whitespace
-        line = line.strip()
+        line = raw_line.strip()
         # Skip empty lines in sequences
         if line or (cleaned_lines and cleaned_lines[-1]):
             cleaned_lines.append(line)

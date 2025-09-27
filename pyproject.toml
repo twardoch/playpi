@@ -13,7 +13,7 @@
 name = 'playpi' # Package name on PyPI
 description = 'Automate AI chat workflows through browser automation' # Short description
 readme = 'README.md' # Path to README file
-requires-python = '>=3.11' # Minimum Python version
+requires-python = '>=3.12' # Minimum Python version
 keywords = [
     "playwright", "automation", "ai", "chat", "gemini", "browser"
 ] # Keywords for PyPI search
@@ -23,7 +23,6 @@ dynamic = ["version"] # Fields set dynamically at build time
 classifiers = [
     'Development Status :: 3 - Alpha', # Package maturity level
     'Programming Language :: Python',
-    'Programming Language :: Python :: 3.11',
     'Programming Language :: Python :: 3.12',
     'Programming Language :: Python :: Implementation :: CPython',
     'Operating System :: OS Independent',
@@ -42,6 +41,7 @@ dependencies = [
     "loguru>=0.7.0",
     "html2text>=2020.1.16",
     "platformdirs>=3.0.0",
+    "playwrightauthor>=1.0.13",
 ]
 
 # Author information
@@ -176,7 +176,7 @@ fix = ["ruff check --fix --unsafe-fixes src/playpi tests", "ruff format --respec
 # Matrix configuration to test across multiple Python versions
 
 [[tool.hatch.envs.all.matrix]]
-python = ["3.10", "3.11", "3.12"]
+python = ["3.12"]
 
 #------------------------------------------------------------------------------
 # SPECIALIZED ENVIRONMENTS
