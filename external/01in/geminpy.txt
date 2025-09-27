@@ -1,0 +1,5536 @@
+Project Structure:
+📁 geminpy
+├── 📁 issues
+│   ├── 📄 101.txt
+│   ├── 📄 102.txt
+│   ├── 📄 103.txt
+│   └── 📄 104.txt
+├── 📁 scripts
+│   ├── 📄 build.sh
+│   ├── 📄 release.sh
+│   └── 📄 test.sh
+├── 📁 src
+│   └── 📁 geminpy
+│       ├── 📁 browser
+│       │   ├── 📄 __init__.py
+│       │   ├── 📄 automation.py
+│       │   ├── 📄 chrome.py
+│       │   └── 📄 manager.py
+│       ├── 📁 core
+│       │   ├── 📄 __init__.py
+│       │   ├── 📄 config.py
+│       │   ├── 📄 constants.py
+│       │   ├── 📄 exceptions.py
+│       │   └── 📄 models.py
+│       ├── 📁 gemini
+│       │   ├── 📄 __init__.py
+│       │   ├── 📄 client.py
+│       │   ├── 📄 executor.py
+│       │   └── 📄 parser.py
+│       ├── 📁 utils
+│       │   ├── 📄 __init__.py
+│       │   ├── 📄 logging.py
+│       │   ├── 📄 platform.py
+│       │   └── 📄 storage.py
+│       ├── 📄 __init__.py
+│       ├── 📄 __main__.py
+│       ├── 📄 api.py
+│       ├── 📄 cli.py
+│       └── 📄 geminpy.py
+├── 📁 temp
+├── 📁 tests
+│   ├── 📁 test_browser
+│   │   ├── 📄 test_automation.py
+│   │   ├── 📄 test_chrome.py
+│   │   └── 📄 test_manager.py
+│   ├── 📁 test_core
+│   │   └── 📄 test_models.py
+│   ├── 📁 test_gemini
+│   │   ├── 📄 test_client.py
+│   │   ├── 📄 test_executor.py
+│   │   └── 📄 test_parser.py
+│   ├── 📁 test_utils
+│   │   ├── 📄 test_platform.py
+│   │   └── 📄 test_storage.py
+│   ├── 📄 conftest.py
+│   ├── 📄 test_api.py
+│   ├── 📄 test_cli.py
+│   └── 📄 test_package.py
+├── 📄 .gitignore
+├── 📄 AGENTS.md
+├── 📄 build.sh
+├── 📄 CHANGELOG.md
+├── 📄 CLAUDE.md
+├── 📄 DEPLOYMENT.md
+├── 📄 geminpy.spec
+├── 📄 LICENSE
+├── 📄 LLM-CLI.md
+├── 📄 md.txt
+├── 📄 package.toml
+├── 📄 PLAN.md
+├── 📄 pyproject.toml
+├── 📄 README.md
+└── 📄 TODO.md
+
+
+<documents>
+<document index="1">
+<source>.cursorindexingignore</source>
+<document_content>
+
+# Don't index SpecStory auto-save files, but allow explicit context inclusion via @ references
+.specstory/**
+
+</document_content>
+</document>
+
+<document index="2">
+<source>.cursorrules</source>
+<document_content>
+
+
+## 1. Project Overview
+
+This is a Python package called `geminpy` that appears to be a wrapper/automation tool for Google's Gemini CLI. The codebase includes:
+- Old code that needs to be ported is in `work/gemini_wrapper.py`
+- That code needs to be ported into `src/geminpy/` and suitably refactored.
+- Modern Python packaging with Hatch build system
+- Comprehensive testing and linting setup
+
+## 2. Key Commands
+
+### 2.1. Development
+
+```bash
+# Run tests
+hatch run test
+
+# Run tests with coverage
+hatch run test-cov
+
+# Type checking
+hatch run type-check
+
+# Linting
+hatch run lint
+
+# Format code
+hatch run fmt
+
+# Fix code issues (including unsafe fixes)
+hatch run fix
+
+# Run a single test
+hatch run pytest tests/test_package.py::test_name
+```
+
+### 2.2. Environment-specific Commands
+
+```bash
+# Run all lint checks
+hatch env run lint:all
+
+# Build documentation
+hatch env run docs:build
+
+# Run CI tests (with XML coverage)
+hatch env run ci:test
+```
+
+### 2.3. From .cursorrules - After Python changes run:
+
+```bash
+fd -e py -x autoflake {}; fd -e py -x pyupgrade --py311-plus {}; fd -e py -x ruff check --output-format=github --fix --unsafe-fixes {}; fd -e py -x ruff format --respect-gitignore --target-version py311 {}; python -m pytest;
+```
+
+## 3. Architecture
+
+### 3.1. Package Structure
+- **src/geminpy/**: Main package source
+  - `geminpy.py`: Core module
+  - `__version__.py`: Dynamic version from VCS
+- **work/**: Old `gemini_wrapper.py` 
+- **tests/**: Test suite
+
+### 3.2. Key Dependencies
+
+- Build: Hatchling with hatch-vcs for version control
+- Testing: pytest, pytest-cov, pytest-xdist, pytest-benchmark
+- Linting: ruff (extensive rules), mypy (strict mode)
+- Formatting: isort, pyupgrade, absolufy-imports
+- Documentation: sphinx, sphinx-rtd-theme, myst-parser
+
+### 3.3. Chrome Automation Component
+The old `work/gemini_wrapper.py` script:
+- Automates Google OAuth flow for Gemini CLI
+- Manages Chrome for Testing installation
+- Uses Playwright for browser automation
+- Handles rate limiting with automatic fallback to flash model
+- Stores settings in user data directory
+
+We need to port this code into `src/geminpy/` and suitably refactor it.
+
+## 4. Development Guidelines
+
+- Use `uv pip`, never `pip`
+- Use `python -m` when running code
+- Write clear docstrings and descriptive names
+- Use type hints in simplest form (list, dict, | for unions)
+- Use f-strings and structural pattern matching
+- Add verbose loguru-based logging
+- For CLI scripts, use fire & rich
+- Include `this_file` record near top of files
+- Minimize confirmations, iterate gradually
+- Handle failures gracefully with retries/fallbacks
+- Modularize repeated logic into single-purpose functions
+
+## 5. Configuration
+
+### 5.1. Tool Configurations (pyproject.toml)
+- **Pytest**: Configured with branch coverage, async support
+- **Coverage**: Branch coverage enabled, parallel support
+- **Mypy**: Strict mode with comprehensive type checking
+- **Ruff**: Extensive linting rules covering security, style, complexity
+- **Pre-commit**: Hook manager for code quality
+
+### 5.2. Environment Support
+- Python 3.10, 3.11, 3.12
+- macOS-specific features in Chrome automation tool
+- Git repository with VCS-based versioning
+
+## 6. Old Gemini CLI OAuth Automation Wrapper
+
+An automated OAuth wrapper for Google's `gemini` CLI tool on macOS that eliminates the need for manual authentication steps.
+
+## 7. Overview
+
+The `gemini_wrapper.py` script automates the complete Google OAuth flow for the `gemini` CLI by:
+
+1. **Installing Chrome for Testing** if not available (using `@puppeteer/browsers`)
+2. **Temporarily switching default browser** to Chrome for Testing (using `macdefaultbrowsy`)
+3. **Launching Chrome** in remote debugging mode (port 9222)
+4. **Running the `gemini` CLI** with your specified arguments
+5. **Automating OAuth screens** via Playwright-over-CDP - selecting your account and clicking "Sign in"
+6. **Restoring original browser** and optionally quitting Chrome when done
+
+## 8. Key Features
+
+### 8.1. 🔐 **Seamless Authentication**
+- Automatically handles Google OAuth flow without manual intervention
+- Supports specific user account selection via multiple configuration methods
+- Remembers your preferred account across sessions
+
+### 8.2. 🌐 **Smart Browser Management**
+- Uses Chrome for Testing to avoid conflicts with your regular browser
+- Automatically installs Chrome for Testing if needed
+- Temporarily switches default browser for OAuth, then restores it
+
+### 8.3. 🔄 **Rate Limit Handling**
+- Detects API rate limits in real-time
+- Automatically retries with `gemini-2.5-flash` model when rate limited
+- Graceful failure handling with informative error messages
+
+### 8.4. 📊 **Clean Response Extraction**
+- Filters out authentication noise from gemini CLI output
+- Returns clean model responses for programmatic use
+- Preserves original CLI behavior for interactive use
+
+## 9. Installation & Requirements
+
+### 9.1. Prerequisites
+
+**macOS only** - This tool requires macOS (Darwin) due to browser management dependencies.
+
+#### 9.1.1. Install required tools:
+```bash
+# Install macdefaultbrowsy utility
+brew install macdefaultbrowsy
+
+# Install Playwright browsers (one-time setup)
+playwright install chromium
+```
+
+#### 9.1.2. Dependencies (auto-installed via uv):
+- `fire>=0.5.0` - CLI interface
+- `playwright>=1.43.0` - Browser automation
+- `requests>=2.31.0` - HTTP requests
+- `platformdirs>=4.0.0` - Cross-platform directories
+- `loguru>=0.7.0` - Logging
+
+## 10. Usage
+
+### 10.1. CLI Interface (Direct Replacement)
+
+Use exactly like the regular `gemini` CLI, but with automatic OAuth:
+
+```bash
+# Ask a question
+./gemini_wrapper.py -p "Explain Python decorators"
+
+# Use specific model
+./gemini_wrapper.py -m "gemini-pro" -p "Write a Python function"
+
+# With verbose logging
+./gemini_wrapper.py --verbose -p "Hello world"
+
+# Quit Chrome when done
+./gemini_wrapper.py --quit-chrome -p "What's the weather?"
+```
+
+### 10.2. Programmatic Interface
+
+```python
+from gemini_wrapper import ask
+
+# Simple question-answer
+response = ask("Explain quantum computing in simple terms")
+print(response)
+
+# With specific user account
+response = ask("Generate Python code", user="myemail@gmail.com")
+print(response)
+
+# With debug logging
+response = ask("Help with debugging", verbose=True)
+print(response)
+```
+
+### 10.3. Advanced Usage
+
+```python
+import asyncio
+from gemini_wrapper import call_gemini_cli
+
+# Full control over gemini arguments
+response = await call_gemini_cli(
+    gemini_args=["-m", "gemini-pro", "-p", "Your prompt here"],
+    user="specific@email.com",
+    verbose=True,
+    quit_browser=True
+)
+```
+
+## 11. User Account Configuration
+
+The wrapper resolves your Google account in this priority order:
+
+1. **`--user` CLI argument**: `./gemini_wrapper.py --user="you@gmail.com" -p "Hello"`
+2. **`GEMINI_CLI_USER` environment variable**: `export GEMINI_CLI_USER="you@gmail.com"`
+3. **Stored in settings.json**: Automatically saved from previous successful authentications
+4. **First available account**: If none specified, uses the first Google account found
+
+## 12. How It Works
+
+### 12.1. Browser Automation Flow
+
+1. **Setup Phase**:
+   - Checks if Chrome for Testing is installed, installs if needed
+   - Saves current default browser
+   - Sets Chrome for Testing as temporary default
+
+2. **Authentication Phase**:
+   - Launches Chrome in debugging mode (port 9222)
+   - Starts `gemini` CLI which opens OAuth URL in Chrome
+   - Playwright connects to Chrome via Chrome DevTools Protocol (CDP)
+   - Automatically clicks your account and "Sign in" button
+
+3. **Execution Phase**:
+   - Waits for OAuth success redirect
+   - Monitors gemini process for completion or rate limits
+   - Extracts clean response from mixed CLI output
+
+4. **Cleanup Phase**:
+   - Restores original default browser
+   - Optionally quits Chrome for Testing
+   - Returns clean response text
+
+### 12.2. Rate Limit Handling
+
+When the original request hits rate limits:
+```
+gemini-wrapper detects: "429" or "Quota exceeded" or "rateLimitExceeded"
+↓
+Automatically retries with: gemini -m "gemini-2.5-flash" [your-args]
+↓
+Returns response or fails gracefully
+```
+
+## 13. Old File Structure
+
+```
+work/
+├── gemini_wrapper.py          # Main automation script
+└── settings.json              # Auto-generated settings (Chrome path, user email)
+```
+
+## 14. Settings Storage
+
+Settings are automatically stored in:
+- **Path**: `~/Library/Application Support/com.twardoch.chrometesting/settings.json`
+- **Contents**: Chrome for Testing executable path, preferred user email
+- **Auto-managed**: No manual editing required
+
+## 15. Troubleshooting
+
+### 15.1. Common Issues
+
+**"Chrome CDP did not become available"**
+- Another Chrome instance may be running without `--remote-debugging-port`
+- Check if port 9222 is blocked: `curl http://localhost:9222/json/version`
+- Look at debug logs: `/tmp/gemini_chrome_stderr.log`
+
+**"macdefaultbrowsy utility missing"**
+```bash
+brew install macdefaultbrowsy
+```
+
+**Authentication fails**
+- Enable verbose mode: `--verbose` to see detailed OAuth flow
+- Check screenshots saved to: `oauth_error*.png`
+- Verify your Google account has access to Gemini
+
+**Rate limits persist**
+- The wrapper automatically tries `gemini-2.5-flash` on rate limits
+- Wait a few minutes before retrying
+- Check your Gemini API quota in Google Cloud Console
+
+### 15.2. Debug Mode
+
+Enable verbose logging to see the full automation process:
+
+```bash
+./gemini_wrapper.py --verbose -p "Your question"
+```
+
+This shows:
+- Chrome installation and launch details
+- Browser switching operations  
+- OAuth flow step-by-step
+- Gemini CLI output parsing
+- Error details and screenshots
+
+## 16. Security Notes
+
+- **Browser isolation**: Uses Chrome for Testing, separate from your regular Chrome
+- **Temporary access**: Only switches default browser during authentication
+- **Local automation**: All OAuth automation happens locally via CDP
+- **No credential storage**: No passwords or tokens are stored, only email preference
+
+The wrapper provides a seamless, secure way to use Google's Gemini CLI without manual OAuth interruptions.
+
+We need to port this code into `src/geminpy/` and suitably refactor it.
+
+
+Be creative, diligent, critical, relentless & funny!
+</document_content>
+</document>
+
+<document index="3">
+<source>.gitignore</source>
+<document_content>
+__pycache__/
+__version__.py
+_Chutzpah*
+_deps
+_NCrunch_*
+_pkginfo.txt
+_private
+_Pvt_Extensions
+_ReSharper*/
+_TeamCity*
+_UpgradeReport_Files/
+!?*.[Cc]ache/
+!.axoCover/settings.json
+!.vscode/extensions.json
+!.vscode/launch.json
+!.vscode/settings.json
+!.vscode/tasks.json
+!**/[Pp]ackages/build/
+!Directory.Build.rsp
+._*
+.*crunch*.local.xml
+.axoCover/*
+.builds
+.cache
+.coverage
+.coverage.*
+.cr/personal
+.DS_Store
+.DS_Store?
+.eggs/
+.env
+.fake/
+.history/
+.hypothesis/
+.idea/
+.installed.cfg
+.ionide/
+.localhistory/
+.mfractor/
+.nox/
+.ntvs_analysis.dat
+.paket/paket.exe
+.pytest_cache/
+.Python
+.ruff_cache/
+.sass-cache/
+.Spotlight-V100
+.tox/
+.Trashes
+.venv
+.vs/
+.vscode
+.vscode/
+.vscode/*
+.vshistory/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+[Bb]in/
+[Bb]uild[Ll]og.*
+[Dd]ebug/
+[Dd]ebugPS/
+[Dd]ebugPublic/
+[Ee]xpress/
+[Ll]og/
+[Ll]ogs/
+[Oo]bj/
+[Rr]elease/
+[Rr]eleasePS/
+[Rr]eleases/
+[Tt]est[Rr]esult*/
+[Ww][Ii][Nn]32/
+*_autogen/
+*_h.h
+*_i.c
+*_p.c
+*_wpftmp.csproj
+*- [Bb]ackup ([0-9]).rdl
+*- [Bb]ackup ([0-9][0-9]).rdl
+*- [Bb]ackup.rdl
+*.[Cc]ache
+*.[Pp]ublish.xml
+*.[Rr]e[Ss]harper
+*.a
+*.app
+*.appx
+*.appxbundle
+*.appxupload
+*.aps
+*.azurePubxml
+*.bim_*.settings
+*.bim.layout
+*.binlog
+*.btm.cs
+*.btp.cs
+*.build.csdef
+*.cab
+*.cachefile
+*.code-workspace
+*.cover
+*.coverage
+*.coveragexml
+*.d
+*.dbmdl
+*.dbproj.schemaview
+*.dll
+*.dotCover
+*.DotSettings.user
+*.dsp
+*.dsw
+*.dylib
+*.e2e
+*.egg
+*.egg-info/
+*.exe
+*.gch
+*.GhostDoc.xml
+*.gpState
+*.ilk
+*.iobj
+*.ipdb
+*.jfm
+*.jmconfig
+*.la
+*.lai
+*.ldf
+*.lib
+*.lo
+*.log
+*.mdf
+*.meta
+*.mm.*
+*.mod
+*.msi
+*.msix
+*.msm
+*.msp
+*.ncb
+*.ndf
+*.nuget.props
+*.nuget.targets
+*.nupkg
+*.nvuser
+*.o
+*.obj
+*.odx.cs
+*.opendb
+*.opensdf
+*.opt
+*.out
+*.pch
+*.pdb
+*.pfx
+*.pgc
+*.pgd
+*.pidb
+*.plg
+*.png
+*.psess
+*.publishproj
+*.publishsettings
+*.pubxml
+*.py,cover
+*.py[cod]
+*.pyc
+*.rdl.data
+*.rptproj.bak
+*.rptproj.rsuser
+*.rsp
+*.rsuser
+*.sap
+*.sbr
+*.scc
+*.sdf
+*.sln.docstates
+*.sln.iml
+*.slo
+*.smod
+*.snupkg
+*.so
+*.suo
+*.svclog
+*.swo
+*.swp
+*.tlb
+*.tlh
+*.tli
+*.tlog
+*.tmp
+*.tmp_proj
+*.tss
+*.user
+*.userosscache
+*.userprefs
+*.vbp
+*.vbw
+*.VC.db
+*.VC.VC.opendb
+*.VisualState.xml
+*.vsp
+*.vspscc
+*.vspx
+*.vssscc
+*.xsd.cs
+**/[Pp]ackages/*
+**/*.DesktopClient/GeneratedArtifacts
+**/*.DesktopClient/ModelManifest.xml
+**/*.HTMLClient/GeneratedArtifacts
+**/*.Server/GeneratedArtifacts
+**/*.Server/ModelManifest.xml
+*~
+*$py.class
+~$*
+$tf/
+AppPackages/
+artifacts/
+ASALocalRun/
+AutoTest.Net/
+Backup*/
+BenchmarkDotNet.Artifacts/
+bld/
+build/
+BundleArtifacts/
+ClientBin/
+cmake_install.cmake
+CMakeCache.txt
+CMakeFiles
+CMakeLists.txt.user
+CMakeScripts
+CMakeUserPresets.json
+compile_commands.json
+cover/
+coverage.xml
+coverage*.info
+coverage*.json
+coverage*.xml
+csx/
+CTestTestfile.cmake
+develop-eggs/
+dlldata.c
+DocProject/buildhelp/
+DocProject/Help/*.hhc
+DocProject/Help/*.hhk
+DocProject/Help/*.hhp
+DocProject/Help/*.HxC
+DocProject/Help/*.HxT
+DocProject/Help/html
+DocProject/Help/Html2
+downloads/
+ecf/
+eggs/
+ehthumbs.db
+env.bak/
+env/
+ENV/
+FakesAssemblies/
+FodyWeavers.xsd
+Generated_Code/
+Generated\ Files/
+healthchecksdb
+htmlcov/
+install_manifest.txt
+ipch/
+lib/
+lib64/
+Makefile
+MANIFEST
+MigrationBackup/
+mono_crash.*
+nCrunchTemp_*
+node_modules/
+nosetests.xml
+nunit-*.xml
+OpenCover/
+orleans.codegen.cs
+Package.StoreAssociation.xml
+paket-files/
+parts/
+project.fragment.lock.json
+project.lock.json
+publish/
+PublishScripts/
+rcf/
+ScaffoldingReadMe.txt
+sdist/
+ServiceFabricBackup/
+StyleCopReport.xml
+Testing
+TestResult.xml
+Thumbs.db
+UpgradeLog*.htm
+UpgradeLog*.XML
+var/
+venv.bak/
+venv/
+VERSION.txt
+wheels/
+x64/
+x86/
+dist/
+</document_content>
+</document>
+
+<document index="4">
+<source>.pre-commit-config.yaml</source>
+<document_content>
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.3.4
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
+        args: [--respect-gitignore]
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+      - id: check-yaml
+      - id: check-toml
+      - id: check-added-large-files
+      - id: debug-statements
+      - id: check-case-conflict
+      - id: mixed-line-ending
+        args: [--fix=lf] 
+</document_content>
+</document>
+
+<document index="5">
+<source>AGENTS.md</source>
+<document_content>
+
+
+## 1. Project Overview
+
+This is a Python package called `geminpy` that appears to be a wrapper/automation tool for Google's Gemini CLI. The codebase includes:
+- Old code that needs to be ported is in `work/gemini_wrapper.py`
+- That code needs to be ported into `src/geminpy/` and suitably refactored.
+- Modern Python packaging with Hatch build system
+- Comprehensive testing and linting setup
+
+## 2. Key Commands
+
+### 2.1. Development
+
+```bash
+# Run tests
+hatch run test
+
+# Run tests with coverage
+hatch run test-cov
+
+# Type checking
+hatch run type-check
+
+# Linting
+hatch run lint
+
+# Format code
+hatch run fmt
+
+# Fix code issues (including unsafe fixes)
+hatch run fix
+
+# Run a single test
+hatch run pytest tests/test_package.py::test_name
+```
+
+### 2.2. Environment-specific Commands
+
+```bash
+# Run all lint checks
+hatch env run lint:all
+
+# Build documentation
+hatch env run docs:build
+
+# Run CI tests (with XML coverage)
+hatch env run ci:test
+```
+
+### 2.3. From .cursorrules - After Python changes run:
+
+```bash
+fd -e py -x autoflake {}; fd -e py -x pyupgrade --py311-plus {}; fd -e py -x ruff check --output-format=github --fix --unsafe-fixes {}; fd -e py -x ruff format --respect-gitignore --target-version py311 {}; python -m pytest;
+```
+
+## 3. Architecture
+
+### 3.1. Package Structure
+- **src/geminpy/**: Main package source
+  - `geminpy.py`: Core module
+  - `__version__.py`: Dynamic version from VCS
+- **work/**: Old `gemini_wrapper.py` 
+- **tests/**: Test suite
+
+### 3.2. Key Dependencies
+
+- Build: Hatchling with hatch-vcs for version control
+- Testing: pytest, pytest-cov, pytest-xdist, pytest-benchmark
+- Linting: ruff (extensive rules), mypy (strict mode)
+- Formatting: isort, pyupgrade, absolufy-imports
+- Documentation: sphinx, sphinx-rtd-theme, myst-parser
+
+### 3.3. Chrome Automation Component
+The old `work/gemini_wrapper.py` script:
+- Automates Google OAuth flow for Gemini CLI
+- Manages Chrome for Testing installation
+- Uses Playwright for browser automation
+- Handles rate limiting with automatic fallback to flash model
+- Stores settings in user data directory
+
+We need to port this code into `src/geminpy/` and suitably refactor it.
+
+## 4. Development Guidelines
+
+- Use `uv pip`, never `pip`
+- Use `python -m` when running code
+- Write clear docstrings and descriptive names
+- Use type hints in simplest form (list, dict, | for unions)
+- Use f-strings and structural pattern matching
+- Add verbose loguru-based logging
+- For CLI scripts, use fire & rich
+- Include `this_file` record near top of files
+- Minimize confirmations, iterate gradually
+- Handle failures gracefully with retries/fallbacks
+- Modularize repeated logic into single-purpose functions
+
+## 5. Configuration
+
+### 5.1. Tool Configurations (pyproject.toml)
+- **Pytest**: Configured with branch coverage, async support
+- **Coverage**: Branch coverage enabled, parallel support
+- **Mypy**: Strict mode with comprehensive type checking
+- **Ruff**: Extensive linting rules covering security, style, complexity
+- **Pre-commit**: Hook manager for code quality
+
+### 5.2. Environment Support
+- Python 3.10, 3.11, 3.12
+- macOS-specific features in Chrome automation tool
+- Git repository with VCS-based versioning
+
+## 6. Old Gemini CLI OAuth Automation Wrapper
+
+An automated OAuth wrapper for Google's `gemini` CLI tool on macOS that eliminates the need for manual authentication steps.
+
+## 7. Overview
+
+The `gemini_wrapper.py` script automates the complete Google OAuth flow for the `gemini` CLI by:
+
+1. **Installing Chrome for Testing** if not available (using `@puppeteer/browsers`)
+2. **Temporarily switching default browser** to Chrome for Testing (using `macdefaultbrowsy`)
+3. **Launching Chrome** in remote debugging mode (port 9222)
+4. **Running the `gemini` CLI** with your specified arguments
+5. **Automating OAuth screens** via Playwright-over-CDP - selecting your account and clicking "Sign in"
+6. **Restoring original browser** and optionally quitting Chrome when done
+
+## 8. Key Features
+
+### 8.1. 🔐 **Seamless Authentication**
+- Automatically handles Google OAuth flow without manual intervention
+- Supports specific user account selection via multiple configuration methods
+- Remembers your preferred account across sessions
+
+### 8.2. 🌐 **Smart Browser Management**
+- Uses Chrome for Testing to avoid conflicts with your regular browser
+- Automatically installs Chrome for Testing if needed
+- Temporarily switches default browser for OAuth, then restores it
+
+### 8.3. 🔄 **Rate Limit Handling**
+- Detects API rate limits in real-time
+- Automatically retries with `gemini-2.5-flash` model when rate limited
+- Graceful failure handling with informative error messages
+
+### 8.4. 📊 **Clean Response Extraction**
+- Filters out authentication noise from gemini CLI output
+- Returns clean model responses for programmatic use
+- Preserves original CLI behavior for interactive use
+
+## 9. Installation & Requirements
+
+### 9.1. Prerequisites
+
+**macOS only** - This tool requires macOS (Darwin) due to browser management dependencies.
+
+#### 9.1.1. Install required tools:
+```bash
+# Install macdefaultbrowsy utility
+brew install macdefaultbrowsy
+
+# Install Playwright browsers (one-time setup)
+playwright install chromium
+```
+
+#### 9.1.2. Dependencies (auto-installed via uv):
+- `fire>=0.5.0` - CLI interface
+- `playwright>=1.43.0` - Browser automation
+- `requests>=2.31.0` - HTTP requests
+- `platformdirs>=4.0.0` - Cross-platform directories
+- `loguru>=0.7.0` - Logging
+
+## 10. Usage
+
+### 10.1. CLI Interface (Direct Replacement)
+
+Use exactly like the regular `gemini` CLI, but with automatic OAuth:
+
+```bash
+# Ask a question
+./gemini_wrapper.py -p "Explain Python decorators"
+
+# Use specific model
+./gemini_wrapper.py -m "gemini-pro" -p "Write a Python function"
+
+# With verbose logging
+./gemini_wrapper.py --verbose -p "Hello world"
+
+# Quit Chrome when done
+./gemini_wrapper.py --quit-chrome -p "What's the weather?"
+```
+
+### 10.2. Programmatic Interface
+
+```python
+from gemini_wrapper import ask
+
+# Simple question-answer
+response = ask("Explain quantum computing in simple terms")
+print(response)
+
+# With specific user account
+response = ask("Generate Python code", user="myemail@gmail.com")
+print(response)
+
+# With debug logging
+response = ask("Help with debugging", verbose=True)
+print(response)
+```
+
+### 10.3. Advanced Usage
+
+```python
+import asyncio
+from gemini_wrapper import call_gemini_cli
+
+# Full control over gemini arguments
+response = await call_gemini_cli(
+    gemini_args=["-m", "gemini-pro", "-p", "Your prompt here"],
+    user="specific@email.com",
+    verbose=True,
+    quit_browser=True
+)
+```
+
+## 11. User Account Configuration
+
+The wrapper resolves your Google account in this priority order:
+
+1. **`--user` CLI argument**: `./gemini_wrapper.py --user="you@gmail.com" -p "Hello"`
+2. **`GEMINI_CLI_USER` environment variable**: `export GEMINI_CLI_USER="you@gmail.com"`
+3. **Stored in settings.json**: Automatically saved from previous successful authentications
+4. **First available account**: If none specified, uses the first Google account found
+
+## 12. How It Works
+
+### 12.1. Browser Automation Flow
+
+1. **Setup Phase**:
+   - Checks if Chrome for Testing is installed, installs if needed
+   - Saves current default browser
+   - Sets Chrome for Testing as temporary default
+
+2. **Authentication Phase**:
+   - Launches Chrome in debugging mode (port 9222)
+   - Starts `gemini` CLI which opens OAuth URL in Chrome
+   - Playwright connects to Chrome via Chrome DevTools Protocol (CDP)
+   - Automatically clicks your account and "Sign in" button
+
+3. **Execution Phase**:
+   - Waits for OAuth success redirect
+   - Monitors gemini process for completion or rate limits
+   - Extracts clean response from mixed CLI output
+
+4. **Cleanup Phase**:
+   - Restores original default browser
+   - Optionally quits Chrome for Testing
+   - Returns clean response text
+
+### 12.2. Rate Limit Handling
+
+When the original request hits rate limits:
+```
+gemini-wrapper detects: "429" or "Quota exceeded" or "rateLimitExceeded"
+↓
+Automatically retries with: gemini -m "gemini-2.5-flash" [your-args]
+↓
+Returns response or fails gracefully
+```
+
+## 13. Old File Structure
+
+```
+work/
+├── gemini_wrapper.py          # Main automation script
+└── settings.json              # Auto-generated settings (Chrome path, user email)
+```
+
+## 14. Settings Storage
+
+Settings are automatically stored in:
+- **Path**: `~/Library/Application Support/com.twardoch.chrometesting/settings.json`
+- **Contents**: Chrome for Testing executable path, preferred user email
+- **Auto-managed**: No manual editing required
+
+## 15. Troubleshooting
+
+### 15.1. Common Issues
+
+**"Chrome CDP did not become available"**
+- Another Chrome instance may be running without `--remote-debugging-port`
+- Check if port 9222 is blocked: `curl http://localhost:9222/json/version`
+- Look at debug logs: `/tmp/gemini_chrome_stderr.log`
+
+**"macdefaultbrowsy utility missing"**
+```bash
+brew install macdefaultbrowsy
+```
+
+**Authentication fails**
+- Enable verbose mode: `--verbose` to see detailed OAuth flow
+- Check screenshots saved to: `oauth_error*.png`
+- Verify your Google account has access to Gemini
+
+**Rate limits persist**
+- The wrapper automatically tries `gemini-2.5-flash` on rate limits
+- Wait a few minutes before retrying
+- Check your Gemini API quota in Google Cloud Console
+
+### 15.2. Debug Mode
+
+Enable verbose logging to see the full automation process:
+
+```bash
+./gemini_wrapper.py --verbose -p "Your question"
+```
+
+This shows:
+- Chrome installation and launch details
+- Browser switching operations  
+- OAuth flow step-by-step
+- Gemini CLI output parsing
+- Error details and screenshots
+
+## 16. Security Notes
+
+- **Browser isolation**: Uses Chrome for Testing, separate from your regular Chrome
+- **Temporary access**: Only switches default browser during authentication
+- **Local automation**: All OAuth automation happens locally via CDP
+- **No credential storage**: No passwords or tokens are stored, only email preference
+
+The wrapper provides a seamless, secure way to use Google's Gemini CLI without manual OAuth interruptions.
+
+We need to port this code into `src/geminpy/` and suitably refactor it.
+
+
+Be creative, diligent, critical, relentless & funny!
+</document_content>
+</document>
+
+<document index="6">
+<source>CHANGELOG.md</source>
+<document_content>
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [Unreleased]
+
+### Added
+- **Multi-language OAuth Support**: Enhanced OAuth button detection to support 9+ languages
+  - Added support for Polish, French, German, Spanish, Italian, Russian, Japanese, and Chinese
+  - Implemented multiple fallback strategies for button detection (by text, attributes, and styling)
+  - Added filtering to avoid clicking developer info or help links
+  - Addresses issue #101 where authentication failed on non-English Google OAuth pages
+- **CLI Model Shortcuts**: Added convenient shortcuts for common Gemini models
+  - `-P` / `--Pro` as shortcut for `-m 'gemini-2.5-pro'`
+  - `-F` / `--Flash` as shortcut for `-m 'gemini-2.5-flash'`
+  - Includes warnings when shortcuts override existing model arguments
+- **Interactive Mode Support**: Fixed gemini CLI interactive mode handling
+  - Properly detects when no `-p` argument is provided
+  - Allows gemini to handle stdin/stdout directly for interactive sessions
+  - Addresses issue #102 where interactive mode would hang
+- **Enhanced Browser Management**: Improved `BrowserManager` with hanging prevention
+  - Added check to prevent hanging when setting browser that's already default
+  - Enhanced error handling and logging throughout browser management
+  - Switched to `macdefaultbrowsy` Python package instead of CLI tool
+- **Comprehensive Test Suite**: 46 tests with improved coverage
+  - Browser module tests: OAuth automation, Chrome management, browser switching
+  - Gemini module tests: CLI execution, response parsing, rate limit detection
+  - Core utilities tests: Platform checks, settings management, error handling
+  - All tests use proper mocking and async/await patterns
+- **API Model Parameter**: Enhanced `ask()` and `ask_async()` functions with model parameter
+  - Added optional `model` parameter to programmatic API
+  - Supports shortcuts: `model="pro"` for gemini-2.5-pro, `model="flash"` for gemini-2.5-flash
+  - Full model names pass through unchanged (e.g., `model="gemini-1.5-ultra"`)
+- **Dynamic Model Resolution**: Smart model name resolution from Gemini CLI
+  - Automatically parses model constants from Google's Gemini CLI installation
+  - Reads `DEFAULT_GEMINI_MODEL` and `DEFAULT_GEMINI_FLASH_MODEL` from models.js
+  - Falls back to hardcoded defaults if Gemini CLI is not installed
+  - Ensures shortcuts stay synchronized with Google's official model definitions
+  - Cross-platform npm global directory resolution
+- **Test Coverage Improvements**: 
+  - Added comprehensive CLI tests achieving 100% coverage for cli.py
+  - 11 new tests covering all CLI functionality including model shortcuts, interactive mode, and error handling
+  - Total test count increased from 45 to 56 tests
+
+### Changed
+- Improved OAuth automation robustness with multi-strategy button detection
+- Enhanced CLI argument handling with Fire framework
+- Improved code quality with automatic linting and formatting fixes
+- Enhanced error handling and type safety throughout the codebase
+- **Browser Management**: Now uses `macdefaultbrowsy` Python package for direct API access
+- **Model Shortcuts**: Centralized in `core.models` module for consistency between API and CLI
+
+### Fixed
+- Fixed button clicking reliability in OAuth flow (issue #102)
+- Fixed interactive mode hanging when no prompt provided
+- Fixed incorrect error messages about missing macdefaultbrowser CLI tool
+- Added `macdefaultbrowsy` as a proper dependency
+- Added interactive user email prompt during first-time setup (issue #103)
+- Cleaned up unnecessary macdefaultbrowsy availability checks
+- Fixed unnecessary gemini-2.5-flash fallback retry after normal interactive mode exit
+
+### Technical Notes
+- Switched from subprocess calls to macdefaultbrowser CLI to using macdefaultbrowsy Python package
+- Interactive mode now properly passes stdin/stdout to gemini subprocess
+- Button detection includes text content filtering to avoid non-signin buttons
+- All tests updated to mock the Python package interface instead of subprocess calls
+- First-time setup now prompts for default Google account email when Chrome for Testing is installed
+- Simplified BrowserManager by removing redundant package availability checks
+- Model resolution uses regex parsing of JavaScript export statements
+- Added `aiohttp` dependency for async HTTP requests in OAuth automation
+
+## [0.1.0] - 2024-07-26
+
+### Added
+- Initial release of `geminpy`.
+- Ported all functionality from the original `work/gemini_wrapper.py` script.
+- Created a structured Python package with a modular architecture.
+- **Core**: Configuration, custom exceptions, and constants.
+- **Browser Management**:
+    - `BrowserManager` for macOS default browser control.
+    - `ChromeTestingManager` for automatic installation and management of Chrome for Testing.
+    - `ChromeManager` for launching Chrome with remote debugging enabled.
+- **OAuth Automation**:
+    - `OAuthAutomator` using Playwright for automated Google account selection and sign-in.
+    - `UserResolver` for intelligent user account resolution from multiple sources.
+- **Gemini Integration**:
+    - `GeminiClient` as the main orchestrator combining all components.
+    - `GeminiExecutor` for subprocess management with real-time monitoring.
+    - `ResponseParser` for extracting clean responses from CLI output.
+- **Utilities**:
+    - Platform validation ensuring macOS compatibility.
+    - Settings management using platformdirs for cross-platform storage.
+    - Centralized logging with Loguru.
+- **High-Level API**:
+    - Simple `ask()` function for direct usage.
+    - Async `call_gemini_cli()` for advanced scenarios.
+- **CLI Interface**:
+    - Fire-based command-line interface with Rich formatting.
+    - Full backward compatibility with original script arguments.
+- **Error Handling**:
+    - Automatic rate limit detection and retry with fallback model.
+    - Comprehensive error types for different failure scenarios.
+    - Graceful degradation and informative error messages.
+- **Modern Python Features**:
+    - Full type hints with union syntax (str | None).
+    - Async/await throughout for non-blocking operations.
+    - Dataclasses for configuration management.
+    - Context managers for resource cleanup.
+
+### Technical Details
+- **Dependencies**: Fire, Playwright, Requests, Platformdirs, Loguru, Rich
+- **Python Support**: 3.10, 3.11, 3.12
+- **Build System**: Hatchling with VCS versioning
+- **Code Quality**: Ruff linting, MyPy type checking, comprehensive test suite
+- **Platform**: macOS only (due to browser management requirements)
+
+### Migration Notes
+- All original `gemini_wrapper.py` functionality is preserved
+- Settings are automatically migrated to new location
+- CLI arguments remain identical for seamless transition
+- New programmatic API available for integration use cases 
+</document_content>
+</document>
+
+<document index="7">
+<source>CLAUDE.md</source>
+<document_content>
+
+
+## 1. Project Overview
+
+This is a Python package called `geminpy` that appears to be a wrapper/automation tool for Google's Gemini CLI. The codebase includes:
+- Old code that needs to be ported is in `work/gemini_wrapper.py`
+- That code needs to be ported into `src/geminpy/` and suitably refactored.
+- Modern Python packaging with Hatch build system
+- Comprehensive testing and linting setup
+
+## 2. Key Commands
+
+### 2.1. Development
+
+```bash
+# Run tests
+hatch run test
+
+# Run tests with coverage
+hatch run test-cov
+
+# Type checking
+hatch run type-check
+
+# Linting
+hatch run lint
+
+# Format code
+hatch run fmt
+
+# Fix code issues (including unsafe fixes)
+hatch run fix
+
+# Run a single test
+hatch run pytest tests/test_package.py::test_name
+```
+
+### 2.2. Environment-specific Commands
+
+```bash
+# Run all lint checks
+hatch env run lint:all
+
+# Build documentation
+hatch env run docs:build
+
+# Run CI tests (with XML coverage)
+hatch env run ci:test
+```
+
+### 2.3. From .cursorrules - After Python changes run:
+
+```bash
+fd -e py -x autoflake {}; fd -e py -x pyupgrade --py311-plus {}; fd -e py -x ruff check --output-format=github --fix --unsafe-fixes {}; fd -e py -x ruff format --respect-gitignore --target-version py311 {}; python -m pytest;
+```
+
+## 3. Architecture
+
+### 3.1. Package Structure
+- **src/geminpy/**: Main package source
+  - `geminpy.py`: Core module
+  - `__version__.py`: Dynamic version from VCS
+- **work/**: Old `gemini_wrapper.py` 
+- **tests/**: Test suite
+
+### 3.2. Key Dependencies
+
+- Build: Hatchling with hatch-vcs for version control
+- Testing: pytest, pytest-cov, pytest-xdist, pytest-benchmark
+- Linting: ruff (extensive rules), mypy (strict mode)
+- Formatting: isort, pyupgrade, absolufy-imports
+- Documentation: sphinx, sphinx-rtd-theme, myst-parser
+
+### 3.3. Chrome Automation Component
+The old `work/gemini_wrapper.py` script:
+- Automates Google OAuth flow for Gemini CLI
+- Manages Chrome for Testing installation
+- Uses Playwright for browser automation
+- Handles rate limiting with automatic fallback to flash model
+- Stores settings in user data directory
+
+We need to port this code into `src/geminpy/` and suitably refactor it.
+
+## 4. Development Guidelines
+
+- Use `uv pip`, never `pip`
+- Use `python -m` when running code
+- Write clear docstrings and descriptive names
+- Use type hints in simplest form (list, dict, | for unions)
+- Use f-strings and structural pattern matching
+- Add verbose loguru-based logging
+- For CLI scripts, use fire & rich
+- Include `this_file` record near top of files
+- Minimize confirmations, iterate gradually
+- Handle failures gracefully with retries/fallbacks
+- Modularize repeated logic into single-purpose functions
+
+## 5. Configuration
+
+### 5.1. Tool Configurations (pyproject.toml)
+- **Pytest**: Configured with branch coverage, async support
+- **Coverage**: Branch coverage enabled, parallel support
+- **Mypy**: Strict mode with comprehensive type checking
+- **Ruff**: Extensive linting rules covering security, style, complexity
+- **Pre-commit**: Hook manager for code quality
+
+### 5.2. Environment Support
+- Python 3.10, 3.11, 3.12
+- macOS-specific features in Chrome automation tool
+- Git repository with VCS-based versioning
+
+## 6. Old Gemini CLI OAuth Automation Wrapper
+
+An automated OAuth wrapper for Google's `gemini` CLI tool on macOS that eliminates the need for manual authentication steps.
+
+## 7. Overview
+
+The `gemini_wrapper.py` script automates the complete Google OAuth flow for the `gemini` CLI by:
+
+1. **Installing Chrome for Testing** if not available (using `@puppeteer/browsers`)
+2. **Temporarily switching default browser** to Chrome for Testing (using `macdefaultbrowsy`)
+3. **Launching Chrome** in remote debugging mode (port 9222)
+4. **Running the `gemini` CLI** with your specified arguments
+5. **Automating OAuth screens** via Playwright-over-CDP - selecting your account and clicking "Sign in"
+6. **Restoring original browser** and optionally quitting Chrome when done
+
+## 8. Key Features
+
+### 8.1. 🔐 **Seamless Authentication**
+- Automatically handles Google OAuth flow without manual intervention
+- Supports specific user account selection via multiple configuration methods
+- Remembers your preferred account across sessions
+
+### 8.2. 🌐 **Smart Browser Management**
+- Uses Chrome for Testing to avoid conflicts with your regular browser
+- Automatically installs Chrome for Testing if needed
+- Temporarily switches default browser for OAuth, then restores it
+
+### 8.3. 🔄 **Rate Limit Handling**
+- Detects API rate limits in real-time
+- Automatically retries with `gemini-2.5-flash` model when rate limited
+- Graceful failure handling with informative error messages
+
+### 8.4. 📊 **Clean Response Extraction**
+- Filters out authentication noise from gemini CLI output
+- Returns clean model responses for programmatic use
+- Preserves original CLI behavior for interactive use
+
+## 9. Installation & Requirements
+
+### 9.1. Prerequisites
+
+**macOS only** - This tool requires macOS (Darwin) due to browser management dependencies.
+
+#### 9.1.1. Install required tools:
+```bash
+# Install macdefaultbrowsy utility
+brew install macdefaultbrowsy
+
+# Install Playwright browsers (one-time setup)
+playwright install chromium
+```
+
+#### 9.1.2. Dependencies (auto-installed via uv):
+- `fire>=0.5.0` - CLI interface
+- `playwright>=1.43.0` - Browser automation
+- `requests>=2.31.0` - HTTP requests
+- `platformdirs>=4.0.0` - Cross-platform directories
+- `loguru>=0.7.0` - Logging
+
+## 10. Usage
+
+### 10.1. CLI Interface (Direct Replacement)
+
+Use exactly like the regular `gemini` CLI, but with automatic OAuth:
+
+```bash
+# Ask a question
+./gemini_wrapper.py -p "Explain Python decorators"
+
+# Use specific model
+./gemini_wrapper.py -m "gemini-pro" -p "Write a Python function"
+
+# With verbose logging
+./gemini_wrapper.py --verbose -p "Hello world"
+
+# Quit Chrome when done
+./gemini_wrapper.py --quit-chrome -p "What's the weather?"
+```
+
+### 10.2. Programmatic Interface
+
+```python
+from gemini_wrapper import ask
+
+# Simple question-answer
+response = ask("Explain quantum computing in simple terms")
+print(response)
+
+# With specific user account
+response = ask("Generate Python code", user="myemail@gmail.com")
+print(response)
+
+# With debug logging
+response = ask("Help with debugging", verbose=True)
+print(response)
+```
+
+### 10.3. Advanced Usage
+
+```python
+import asyncio
+from gemini_wrapper import call_gemini_cli
+
+# Full control over gemini arguments
+response = await call_gemini_cli(
+    gemini_args=["-m", "gemini-pro", "-p", "Your prompt here"],
+    user="specific@email.com",
+    verbose=True,
+    quit_browser=True
+)
+```
+
+## 11. User Account Configuration
+
+The wrapper resolves your Google account in this priority order:
+
+1. **`--user` CLI argument**: `./gemini_wrapper.py --user="you@gmail.com" -p "Hello"`
+2. **`GEMINI_CLI_USER` environment variable**: `export GEMINI_CLI_USER="you@gmail.com"`
+3. **Stored in settings.json**: Automatically saved from previous successful authentications
+4. **First available account**: If none specified, uses the first Google account found
+
+## 12. How It Works
+
+### 12.1. Browser Automation Flow
+
+1. **Setup Phase**:
+   - Checks if Chrome for Testing is installed, installs if needed
+   - Saves current default browser
+   - Sets Chrome for Testing as temporary default
+
+2. **Authentication Phase**:
+   - Launches Chrome in debugging mode (port 9222)
+   - Starts `gemini` CLI which opens OAuth URL in Chrome
+   - Playwright connects to Chrome via Chrome DevTools Protocol (CDP)
+   - Automatically clicks your account and "Sign in" button
+
+3. **Execution Phase**:
+   - Waits for OAuth success redirect
+   - Monitors gemini process for completion or rate limits
+   - Extracts clean response from mixed CLI output
+
+4. **Cleanup Phase**:
+   - Restores original default browser
+   - Optionally quits Chrome for Testing
+   - Returns clean response text
+
+### 12.2. Rate Limit Handling
+
+When the original request hits rate limits:
+```
+gemini-wrapper detects: "429" or "Quota exceeded" or "rateLimitExceeded"
+↓
+Automatically retries with: gemini -m "gemini-2.5-flash" [your-args]
+↓
+Returns response or fails gracefully
+```
+
+## 13. Old File Structure
+
+```
+work/
+├── gemini_wrapper.py          # Main automation script
+└── settings.json              # Auto-generated settings (Chrome path, user email)
+```
+
+## 14. Settings Storage
+
+Settings are automatically stored in:
+- **Path**: `~/Library/Application Support/com.twardoch.chrometesting/settings.json`
+- **Contents**: Chrome for Testing executable path, preferred user email
+- **Auto-managed**: No manual editing required
+
+## 15. Troubleshooting
+
+### 15.1. Common Issues
+
+**"Chrome CDP did not become available"**
+- Another Chrome instance may be running without `--remote-debugging-port`
+- Check if port 9222 is blocked: `curl http://localhost:9222/json/version`
+- Look at debug logs: `/tmp/gemini_chrome_stderr.log`
+
+**"macdefaultbrowsy utility missing"**
+```bash
+brew install macdefaultbrowsy
+```
+
+**Authentication fails**
+- Enable verbose mode: `--verbose` to see detailed OAuth flow
+- Check screenshots saved to: `oauth_error*.png`
+- Verify your Google account has access to Gemini
+
+**Rate limits persist**
+- The wrapper automatically tries `gemini-2.5-flash` on rate limits
+- Wait a few minutes before retrying
+- Check your Gemini API quota in Google Cloud Console
+
+### 15.2. Debug Mode
+
+Enable verbose logging to see the full automation process:
+
+```bash
+./gemini_wrapper.py --verbose -p "Your question"
+```
+
+This shows:
+- Chrome installation and launch details
+- Browser switching operations  
+- OAuth flow step-by-step
+- Gemini CLI output parsing
+- Error details and screenshots
+
+## 16. Security Notes
+
+- **Browser isolation**: Uses Chrome for Testing, separate from your regular Chrome
+- **Temporary access**: Only switches default browser during authentication
+- **Local automation**: All OAuth automation happens locally via CDP
+- **No credential storage**: No passwords or tokens are stored, only email preference
+
+The wrapper provides a seamless, secure way to use Google's Gemini CLI without manual OAuth interruptions.
+
+We need to port this code into `src/geminpy/` and suitably refactor it.
+
+
+Be creative, diligent, critical, relentless & funny!
+</document_content>
+</document>
+
+<document index="8">
+<source>DEPLOYMENT.md</source>
+<document_content>
+# Deployment and Release Guide
+
+## Overview
+
+This document describes the deployment and release workflow for the geminpy package, covering git-tag-based semantic versioning, testing, binary compilation, and GitHub Actions CI/CD pipeline.
+
+## Implemented Features
+
+### 1. Git-Tag-Based Semantic Versioning
+- **Version source**: Git tags using `hatch-vcs`
+- **Dynamic versioning**: Version automatically determined from git tags
+- **Version file**: `src/geminpy/__version__.py` generated during build
+- **Format**: Semantic versioning (e.g., v1.2.3)
+
+### 2. Test Suite
+- **Coverage**: 61% (target: 80%)
+- **Test types**: Unit, integration, browser automation
+- **Frameworks**: pytest, pytest-cov, pytest-xdist, pytest-asyncio
+- **Platforms**: Linux, macOS, Windows (with conditional dependencies)
+
+### 3. Local Scripts
+- **`scripts/test.sh`**: Runs tests with optional linting, type checking, coverage reports
+- **`scripts/build.sh`**: Builds Python packages and optional binaries
+- **`scripts/release.sh`**: Handles git tagging and release creation
+
+### 4. GitHub Actions
+- **`ci.yml`**: Multi-platform testing on push/PR
+- **`release.yml`**: Automated releases triggered by git tags
+- **Platforms**: Ubuntu, macOS (Intel & ARM), Windows
+- **Python versions**: 3.10, 3.11, 3.12
+
+### 5. Binary Compilation
+- **Tool**: PyInstaller
+- **Platforms**: Linux, macOS, Windows
+- **Output**: Standalone executable (~64MB)
+- **Dependencies**: All bundled; no Python installation required
+
+### 6. Multiplatform Releases
+- **Artifacts**: Python wheels, source distributions, platform-specific binaries
+- **Distribution**: GitHub Releases and PyPI
+- **Binary names**:
+  - `geminpy-linux-x86_64`
+  - `geminpy-macos-x86_64`
+  - `geminpy-macos-arm64`
+  - `geminpy-windows-x86_64.exe`
+
+## Usage
+
+### Local Development
+
+#### Running Tests
+```bash
+# Full test suite
+./scripts/test.sh
+
+# Skip checks
+./scripts/test.sh --no-lint --no-type-check
+
+# Include security and benchmarks
+./scripts/test.sh --security --benchmarks
+```
+
+#### Building Packages
+```bash
+# Python package only
+./scripts/build.sh
+
+# Include binary
+./scripts/build.sh --binary
+```
+
+#### Creating Releases
+```bash
+# Tag and prepare release
+./scripts/release.sh v1.2.3
+
+# Upload to PyPI
+./scripts/release.sh v1.2.3 --upload-pypi
+
+# Skip tests and build steps
+./scripts/release.sh v1.2.3 --no-tests --no-build
+```
+
+### Automated Workflows
+
+#### Continuous Integration
+- **Trigger**: Push to main/develop or pull request
+- **Actions**: Code quality checks, linting, type checking, tests
+- **Platforms**: Ubuntu, macOS, Windows
+- **Python versions**: 3.10, 3.11, 3.12
+
+#### Release Workflow
+- **Trigger**: Git tag matching `v*`
+- **Actions**:
+  1. Run tests
+  2. Build Python package
+  3. Compile binaries
+  4. Create GitHub release
+  5. Publish to PyPI (non-prerelease tags only)
+
+## File Structure
+
+```
+.
+├── scripts/
+│   ├── build.sh           # Build package
+│   ├── test.sh           # Run tests
+│   └── release.sh        # Create releases
+├── .github/workflows/
+│   ├── ci.yml            # Integration tests
+│   └── release.yml       # Release automation
+├── src/geminpy/
+│   ├── __version__.py    # Auto-generated version
+│   └── ...
+├── tests/                # Test suite
+└── pyproject.toml        # Build configuration
+```
+
+## Configuration
+
+### Build (pyproject.toml)
+- **System**: Hatchling + hatch-vcs
+- **Versioning**: Git tags
+- **Dependencies**: Conditional macOS imports
+- **Environments**: Default, lint, test, docs, ci, build
+
+### Testing
+- **Target coverage**: 80% (currently 61%)
+- **Markers**: unit, integration, benchmark
+- **Parallel execution**: pytest-xdist
+- **Async support**: pytest-asyncio
+
+### Linting
+- **Tool**: Ruff (rules: security, style, complexity, imports)
+- **Type checking**: MyPy
+- **Formatting**: Ruff formatter
+
+## Security Notes
+
+- **Dependency scanning**: Ruff security rules active
+- **Temporary files**: Secured where possible
+- **Subprocess calls**: Reviewed
+- **Secrets**: None hardcoded
+
+## Platform Support
+
+### Python Package
+- **Platforms**: All Python-supported systems
+- **Installation**: `pip install geminpy`
+
+### Binaries
+- **Linux**: x86_64 (Ubuntu)
+- **macOS**: x86_64 and ARM64
+- **Windows**: x86_64
+
+## Troubleshooting
+
+### Common Issues
+
+1. **Build failures on non-macOS**: Expected for macOS-specific dependencies
+2. **Test failures**: Some tests require macOS functionality
+3. **Binary size**: Large due to bundled dependencies (~64MB is normal)
+
+### Fixes
+
+1. **Platform-specific builds**: Use conditional imports
+2. **Test isolation**: Mock platform-specific features
+3. **Binary optimization**: Add PyInstaller flags (future work)
+
+## Planned Improvements
+
+1. Raise test coverage to 80%+
+2. Resolve type annotation issues
+3. Reduce binary size
+4. Add API documentation
+5. Include benchmarking
+6. Add vulnerability scanning to CI
+
+## Version History
+
+- **v1.5.0**: Latest release with core features
+- **v1.5.1-dev**: Current development version with deployment setup
+
+## Contributing
+
+1. Fork repository
+2. Create feature branch
+3. Run tests: `./scripts/test.sh`
+4. Build locally: `./scripts/build.sh`
+5. Submit pull request
+6. CI runs automatically
+
+## Release Steps
+
+1. Confirm all tests pass
+2. Update CHANGELOG.md
+3. Create git tag: `git tag v1.2.3`
+4. Push tag: `git push origin v1.2.3`
+5. Let GitHub Actions handle the rest
+</document_content>
+</document>
+
+<document index="9">
+<source>LICENSE</source>
+<document_content>
+MIT License
+
+Copyright (c) 2025 Adam Twardoch
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+</document_content>
+</document>
+
+<document index="10">
+<source>LLM-CLI.md</source>
+<document_content>
+# LLM CLI Tools Suite
+
+Command-line interfaces for Claude (Anthropic), Gemini (Google), and Codex (OpenAI). These tools run AI coding assistants directly in your terminal, enabling parallel execution for comparison and efficiency.
+
+## 1. What Are LLM CLI Tools?
+
+LLM CLI tools connect large language models to your local development environment. Unlike web-based assistants, they:
+- Run locally in your terminal
+- Understand your entire codebase
+- Execute commands with configurable safety
+- Maintain project context
+- Support text and visual inputs
+
+## 2. Why Use Multiple LLMs?
+
+Parallel execution provides:
+1. **Specialized strengths**:
+   - **Claude**: Complex reasoning and code understanding
+   - **Gemini**: Creative solutions and multimodal tasks
+   - **Codex**: Code generation and debugging
+
+2. **Cross-validation**: Compare outputs for accuracy
+3. **Rate limit distribution**: Avoid provider throttling
+4. **Cost optimization**: Use appropriate models for task complexity
+5. **Diverse approaches**: Different models solve problems differently
+
+## 3. Prerequisites
+
+### 3.1. Installation on macOS
+
+```bash
+brew install parallel uv
+npm install -g @google/gemini-cli @anthropic-ai/claude-code @openai/codex
+uv pip install --system geminpy
+```
+
+### 3.2. API Keys
+
+Set environment variables:
+```bash
+export ANTHROPIC_API_KEY="your-claude-api-key"
+export GEMINI_API_KEY="your-gemini-api-key"  
+export OPENAI_API_KEY="your-openai-api-key"
+```
+
+Authentication alternatives:
+- Claude: Claude Pro/Max subscription (one-time auth)
+- Gemini: Gemini Pro subscription (one-time or per-session auth)
+- Codex: Token billing with potential free daily quota via [data sharing](https://platform.openai.com/settings/organization/data-controls/sharing)
+
+## 4. Tool Overview
+
+### 4.1. Single Execution
+- **`llmask-cla`** - Claude interface
+- **`llmask-gem`** - Gemini interface  
+- **`llmask-cod`** - Codex interface
+- **`llmask`** - Unified interface (specify model or use "random")
+
+### 4.2. Parallel Execution
+- **`llmulti-cla`** - Parallel Claude processing
+- **`llmulti-gem`** - Parallel Gemini processing
+- **`llmulti-cod`** - Parallel Codex processing
+- **`llmulti`** - Unified parallel interface
+
+## 5. Usage
+
+### 5.1. Single Model
+```bash
+# Refactor with Claude
+llmask cla "Refactor this code to use async/await patterns"
+
+# Analyze project with Gemini
+llmask gem "Explain the architecture of this project" --dir /path/to/project
+
+# Debug with Codex
+llmask cod "Find and fix the memory leak in this code"
+
+# Random model selection
+llmask random "Write unit tests for the utils module"
+```
+
+### 5.2. Parallel Processing
+```bash
+# Create directory list
+echo "/project1" > dirs.txt
+echo "/project2" >> dirs.txt
+echo "/project3" >> dirs.txt
+
+# Process all directories
+llmulti cla dirs.txt "Update all dependencies to latest versions"
+
+# Compare model outputs
+llmulti random dirs.txt "Analyze code quality and suggest improvements"
+```
+
+## 6. Architecture
+
+### 6.1. Components
+
+1. **Wrapper Scripts** (`llmask-*`):
+   - Handle directory navigation
+   - Parse command-line arguments
+   - Set environment context
+   - Call underlying LLM tools
+
+2. **Unified Interface** (`llmask`):
+   - Routes to selected LLM
+   - Supports random selection for testing
+   - Standardizes model interaction
+
+3. **Parallel Execution** (`llmulti`):
+   - Uses GNU `parallel` for concurrency
+   - Runs up to 8 processes simultaneously
+   - Maintains isolated directory contexts
+
+### 6.2. Safety Features
+- **Claude Code**: Prompts before file changes
+- **Gemini CLI**: Network-disabled, directory-sandboxed
+- **Codex**: Configurable approval modes
+
+## 7. Use Cases
+
+### 7.1. Code Refactoring
+```bash
+llmask cla "Refactor this React class component to use hooks"
+```
+
+### 7.2. Bug Detection
+```bash
+llmask cod "Find potential null pointer exceptions and fix them"
+```
+
+### 7.3. Documentation
+```bash
+llmask gem "Generate comprehensive API documentation for all public methods"
+```
+
+### 7.4. Architecture Analysis
+```bash
+llmask random "Analyze the current architecture and suggest improvements"
+```
+
+### 7.5. Parallel Test Generation
+```bash
+llmulti cla services.txt "Write comprehensive unit tests with >80% coverage"
+```
+
+### 7.6. Comparative Analysis
+```bash
+for model in cla gem cod; do
+  llmask $model "Suggest performance optimizations for this module"
+done
+```
+
+## 8. Advanced Features
+
+### 8.1. Configuration Files
+- Claude: `.claude/config.json`
+- Gemini: `GEMINI.md` in project root
+- Codex: `.codex/config.json`
+
+### 8.2. Model-Specific Capabilities
+**Claude Code**:
+- MCP server integration
+- GitHub/GitLab connectivity
+- Conversation context preservation
+
+**Gemini CLI**:
+- 1M token context window
+- Free tier: 60 requests/minute, 1000/day
+- Google Search integration
+
+**Codex**:
+- Multiple approval workflows
+- Multimodal input support
+- Sandbox command execution
+
+## 9. Best Practices
+
+1. **Clear prompts**: Be specific about desired outcomes
+2. **Model matching**:
+   - Complex reasoning → Claude
+   - Creative solutions → Gemini  
+   - Code tasks → Codex
+3. **Review changes**: Always verify AI output
+4. **Incremental work**: Avoid massive refactorings
+5. **Parallel efficiency**: Use `llmulti` for repetitive tasks
+
+## 10. Troubleshooting
+
+### 10.1. Common Issues
+1. **API keys**: Check environment variable setup
+2. **Rate limits**: Distribute load or add delays
+3. **Context size**: Split large tasks into chunks
+4. **Permissions**: Verify directory access rights
+
+### 10.2. Performance Tips
+- Use `--dir` flag to prevent unnecessary navigation
+- Keep prompts concise
+- Store settings in config files
+- Monitor usage to control costs
+
+## 11. Security
+
+- **Local code**: Source files remain on your machine
+- **Sandboxing**: Commands execute in restricted environments
+- **API communication**: Only prompts and metadata are transmitted
+- **Version control**: All changes are git-trackable
+
+## 12. Contributing
+
+To add new LLM support:
+1. Create wrapper script following `llmask-*` pattern
+2. Match argument parsing structure
+3. Add model to selection arrays in `llmask` and `llmulti`
+4. Test both single and parallel modes
+
+## 13. License
+
+Wrapper scripts are provided as-is. Individual tools retain their original licenses:
+- Claude Code: Proprietary (API usage)
+- Gemini CLI: Apache 2.0
+- Codex: Proprietary (API usage)
+
+## 14. Future Enhancements
+
+Planned improvements:
+- Result aggregation tools
+- Cost tracking features
+- Automated prompt templates
+- CI/CD pipeline integration
+- Additional provider support
+- Unified configuration system
+
+## 15. Single Execution Scripts
+
+### 15.1. `llmask-cla`
+```bash
+#!/usr/bin/env bash
+CWD="."
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+    --dir)
+        if [[ -n "$2" ]]; then
+            CWD="$2"
+            shift 2
+        else
+            echo "Error: --dir requires a directory argument" >&2
+            exit 1
+        fi
+        ;;
+    *)
+        break
+        ;;
+    esac
+done
+cd "$CWD"
+claude --add-dir "$CWD" --dangerously-skip-permissions -p "$@"
+```
+
+### 15.2. `llmask-cod`
+```bash
+#!/usr/bin/env bash
+CWD="."
+args=()
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+    --dir)
+        CWD="$2"
+        shift 2
+        ;;
+    *)
+        args+=("$1")
+        shift
+        ;;
+    esac
+done
+cd "$CWD"
+codex -m "o4-mini" --dangerously-auto-approve-everything --full-auto -w "." -a "full-auto" -q "${args[@]}" | jq -r 'select(.role == "assistant") | .content[] | select(.type == "output_text") | .text'
+```
+
+### 15.3. `llmask-gem`
+```bash
+#!/usr/bin/env bash
+CWD="."
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+    --dir)
+        if [[ -n "$2" ]]; then
+            CWD="$2"
+            shift 2
+        else
+            echo "Error: --dir requires a directory argument" >&2
+            exit 1
+        fi
+        ;;
+    *)
+        break
+        ;;
+    esac
+done
+cd "$CWD"
+geminpy -a -y -p "$@"
+```
+
+### 15.4. `llmask`
+```bash
+#!/usr/bin/env bash
+model="${1}"
+if [ "${model}" = "random" ]; then
+    models=("cod" "gem" "cla")
+    rand_idx=$((RANDOM % 3))
+    model="${models[rand_idx]}"
+elif [ "${model}" != "cod" ] && [ "${model}" != "gem" ] && [ "${model}" != "cla" ]; then
+    echo "Error: Model must be one of: cod, gem, cla, random" >&2
+    exit 1
+fi
+shift
+llmask-${model} "$@"
+```
+
+## 16. Parallel Execution Scripts
+
+### 16.1. `llmulti-cla`
+```bash
+#!/usr/bin/env bash
+llmulti cla "${1}" "${2}"
+```
+
+### 16.2. `llmulti-cod`
+```bash
+#!/usr/bin/env bash
+llmulti cod "${1}" "${2}"
+```
+
+### 16.3. `llmulti-gem`
+```bash
+#!/usr/bin/env bash
+llmulti gem "${1}" "${2}"
+```
+
+### 16.4. `llmulti`
+```bash
+#!/usr/bin/env bash
+model="${1}"
+if [ "${model}" = "random" ]; then
+    models=("cod" "gem" "cla")
+    rand_idx=$((RANDOM % 3))
+    model="${models[rand_idx]}"
+elif [ "${model}" != "cod" ] && [ "${model}" != "gem" ] && [ "${model}" != "cla" ]; then
+    echo "Error: Model must be one of: cod, gem, cla, random" >&2
+    exit 1
+fi
+parallel -j 8 llmask-${model} \""${3}"\" --dir "{}" ::: $(<"${2}")
+```
+</document_content>
+</document>
+
+<document index="11">
+<source>PLAN.md</source>
+<document_content>
+# Geminpy Streamlining Plan
+
+## Executive Summary
+
+This plan outlines a comprehensive approach to streamline the geminpy codebase, addressing critical bugs, improving code quality, enhancing test coverage, and establishing sustainable development practices. The project has a solid foundation but requires focused improvements in reliability, testing, and user experience.
+
+## 1. Critical Bug Fixes (Immediate Priority)
+
+### 1.1 Interactive Mode Output Suppression (Issue #102)
+
+**Problem**: When running gemini CLI in interactive mode (without `-p` argument), the output is incorrectly suppressed, causing the session to appear hung.
+
+**Root Cause**: The `GeminiClient._try_gemini_with_oauth` method captures stdout/stderr even for interactive sessions.
+
+**Solution**:
+1. Detect interactive mode by checking for absence of `-p` or `--prompt` arguments
+2. When in interactive mode:
+   - Pass `stdin=None, stdout=None, stderr=None` to subprocess
+   - Let gemini handle I/O directly with the terminal
+   - Skip response parsing since there's no programmatic output
+3. Return empty string to indicate successful interactive session
+
+**Implementation Details**:
+- Modify `GeminiClient._try_gemini_with_oauth` lines 95-164
+- Add `is_interactive` flag based on argument detection
+- Conditionally set subprocess pipes based on mode
+- Update response handling logic
+
+### 1.2 OAuth Button Click Reliability (Issue #102)
+
+**Problem**: The OAuth automation sometimes clicks the wrong button (developer info, help links) instead of the sign-in button.
+
+**Root Cause**: Current selectors are too broad and don't filter out non-authentication buttons effectively.
+
+**Solution**:
+1. Implement a more robust button detection strategy:
+   - Priority 1: Use Google's stable element IDs (`#submit_approve_access`)
+   - Priority 2: Use specific jsname attributes for approve buttons
+   - Priority 3: Filter buttons by text content to exclude help/info links
+2. Add visual verification:
+   - Check button position (should be in main content area)
+   - Verify button styling (primary action button)
+   - Ensure button is not disabled
+3. Implement retry mechanism:
+   - If click fails, try next selector strategy
+   - Take screenshot after each attempt for debugging
+   - Fail gracefully with clear error message
+
+**Implementation Details**:
+- Enhance `OAuthAutomator.run_oauth_flow` in `browser/automation.py`
+- Add button validation logic before clicking
+- Implement selector priority queue
+- Add retry decorator with exponential backoff
+
+### 1.3 Misleading macdefaultbrowsy Error Message
+
+**Problem**: Error messages reference a non-existent macdefaultbrowsy CLI tool when the Python package is actually used.
+
+**Root Cause**: Legacy error messages from when the tool used subprocess calls to a CLI.
+
+**Solution**:
+1. Update all error messages to reference the Python package
+2. Remove CLI availability checks from `platform.py`
+3. Update exception handling to show actual Python import/API errors
+4. Clean up obsolete subprocess-related code
+
+**Implementation Details**:
+- Remove `require_command("macdefaultbrowsy")` from `check_dependencies`
+- Update error messages in `BrowserManager` class
+- Fix import error handling to show package installation instructions
+
+## 2. Test Coverage Improvements
+
+### 2.1 Critical Path Testing
+
+**Current State**: 
+- Overall coverage: ~70%
+- Critical gaps: `cli.py` (0%), `gemini/client.py` (0%)
+- Integration tests: Missing
+
+**Target**: 90%+ coverage with focus on critical paths
+
+#### 2.1.1 CLI Testing Strategy
+
+**Approach**: Use Fire's testing utilities or mock sys.argv
+
+**Test Cases**:
+1. Basic command execution with prompt
+2. Model shortcuts (-P, -F)
+3. Interactive mode detection
+4. Error handling for invalid arguments
+5. Verbose flag propagation
+6. User email specification
+7. Browser quit option
+
+**Implementation**:
+```python
+# tests/test_cli.py
+from unittest.mock import patch, AsyncMock
+from geminpy.cli import cli
+
+class TestCLI:
+    @patch('geminpy.api.call_gemini_cli')
+    async def test_basic_prompt(self, mock_call):
+        mock_call.return_value = "Test response"
+        # Test implementation
+```
+
+#### 2.1.2 Client Orchestration Testing
+
+**Test Scenarios**:
+1. Full OAuth flow with browser management
+2. Rate limit detection and retry
+3. Interactive vs non-interactive mode
+4. Error recovery paths
+5. Browser restoration on failure
+6. Chrome launch and CDP connection
+
+**Approach**:
+- Mock all external dependencies
+- Test state transitions
+- Verify cleanup on exceptions
+- Test timeout scenarios
+
+#### 2.1.3 Integration Testing
+
+**New Test Suite**: `tests/integration/`
+
+**Scenarios**:
+1. End-to-end OAuth flow (with mock browser)
+2. CLI to API flow
+3. Settings persistence across runs
+4. First-time setup flow
+5. Rate limit handling with model fallback
+
+### 2.2 Test Infrastructure Improvements
+
+1. **Fixtures Consolidation**:
+   - Create shared fixtures in `conftest.py`
+   - Standardize mock objects
+   - Add async test utilities
+
+2. **Test Data Management**:
+   - Create test data directory
+   - Add sample responses
+   - Mock OAuth pages
+
+3. **Coverage Configuration**:
+   - Add branch coverage requirements
+   - Exclude test files from coverage
+   - Set minimum coverage thresholds
+
+## 3. Code Quality Enhancements
+
+### 3.1 Configuration Management
+
+**Current Issues**:
+- Hardcoded timeouts scattered throughout code
+- Magic numbers without explanation
+- Configuration spread across multiple modules
+
+**Solution Architecture**:
+```python
+# core/config.py enhancement
+@dataclass
+class TimeoutConfig:
+    chrome_launch: int = 30
+    cdp_ready: int = 30
+    oauth_flow: int = 120
+    button_click: int = 5
+    process_monitor: int = 300
+
+@dataclass
+class RetryConfig:
+    max_attempts: int = 3
+    backoff_factor: float = 2.0
+    max_delay: int = 60
+```
+
+**Implementation**:
+1. Centralize all timeouts in config
+2. Add environment variable overrides
+3. Document each configuration option
+4. Add validation for config values
+
+### 3.2 Logging Standardization
+
+**Current State**: Mixed logging patterns, inconsistent levels
+
+**Standards to Implement**:
+1. **Debug**: Detailed flow information
+2. **Info**: Major operations (browser launch, OAuth start)
+3. **Warning**: Recoverable issues (retry attempts)
+4. **Error**: Failures requiring user attention
+5. **Critical**: Unrecoverable errors
+
+**Logging Format**:
+```python
+logger.add(
+    sys.stderr,
+    format="<green>{time:HH:mm:ss}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>",
+    level="INFO",
+    colorize=True
+)
+```
+
+### 3.3 Error Handling Patterns
+
+**Standardize on**:
+1. Always use specific exceptions
+2. Chain exceptions with `from e`
+3. Log before re-raising
+4. Provide actionable error messages
+5. Clean up resources in finally blocks
+
+**Example Pattern**:
+```python
+try:
+    result = await operation()
+except SpecificError as e:
+    logger.error(f"Operation failed: {e}")
+    raise OperationError("User-friendly message") from e
+finally:
+    await cleanup()
+```
+
+### 3.4 Type Safety Improvements
+
+1. **Add missing type hints**:
+   - Complete all function signatures
+   - Add return type annotations
+   - Use Protocol types for interfaces
+
+2. **Enable stricter mypy**:
+   - `disallow_untyped_defs = true`
+   - `warn_return_any = true`
+   - `strict_optional = true`
+
+3. **Runtime validation**:
+   - Add pydantic models for complex data
+   - Validate user inputs
+   - Type check at API boundaries
+
+## 4. Architecture Improvements
+
+### 4.1 Dependency Injection
+
+**Current**: Hard dependencies between modules
+
+**Improved Design**:
+```python
+class GeminiClient:
+    def __init__(
+        self,
+        config: AppConfig,
+        browser_manager: BrowserManager | None = None,
+        oauth_automator: OAuthAutomator | None = None,
+        executor: GeminiExecutor | None = None,
+    ):
+        self.browser_manager = browser_manager or BrowserManager()
+        self.oauth_automator = oauth_automator or OAuthAutomator()
+        self.executor = executor or GeminiExecutor(config.gemini.executable)
+```
+
+**Benefits**:
+- Easier testing with mock injection
+- Flexible composition
+- Clear dependencies
+
+### 4.2 Event-Driven Architecture
+
+**Add event system for**:
+1. OAuth flow progress
+2. Process monitoring updates
+3. Rate limit detection
+4. Browser state changes
+
+**Implementation**:
+```python
+from enum import Enum
+from dataclasses import dataclass
+from typing import Callable
+
+class EventType(Enum):
+    OAUTH_STARTED = "oauth_started"
+    OAUTH_COMPLETED = "oauth_completed"
+    RATE_LIMIT_DETECTED = "rate_limit_detected"
+    
+@dataclass
+class Event:
+    type: EventType
+    data: dict
+    
+class EventBus:
+    def subscribe(self, event_type: EventType, handler: Callable):
+        pass
+    
+    def publish(self, event: Event):
+        pass
+```
+
+### 4.3 Plugin System
+
+**Future-proof with plugin architecture**:
+1. Model providers (beyond Gemini)
+2. Authentication strategies
+3. Output formatters
+4. Custom retry strategies
+
+## 5. Performance Optimizations
+
+### 5.1 Async Optimizations
+
+1. **Concurrent Operations**:
+   - Launch Chrome while checking npm
+   - Parallel file I/O operations
+   - Batch API calls where possible
+
+2. **Connection Pooling**:
+   - Reuse aiohttp session
+   - Keep CDP connection alive
+   - Cache browser instance
+
+### 5.2 Startup Time Improvements
+
+1. **Lazy Imports**:
+   - Import heavy modules only when needed
+   - Defer playwright import until OAuth required
+   - Load config on demand
+
+2. **Caching**:
+   - Cache npm root resolution
+   - Store parsed models.js results
+   - Remember browser state
+
+### 5.3 Memory Usage
+
+1. **Resource Cleanup**:
+   - Proper context managers everywhere
+   - Explicit browser cleanup
+   - Process termination on exit
+
+2. **Stream Processing**:
+   - Handle large outputs in chunks
+   - Limit response buffer size
+   - Clean up temporary files
+
+## 6. User Experience Enhancements
+
+### 6.1 Better Error Messages
+
+**Template**:
+```
+Error: {what_happened}
+Reason: {why_it_happened}
+Solution: {what_to_do}
+Details: {technical_info}
+```
+
+**Examples**:
+```
+Error: Could not connect to Chrome
+Reason: Chrome for Testing is not installed
+Solution: Run 'geminpy' again to auto-install Chrome
+Details: Expected at /Applications/Google Chrome for Testing.app
+```
+
+### 6.2 Progress Indicators
+
+1. **Rich progress bars for**:
+   - Chrome installation
+   - OAuth flow steps
+   - Long-running queries
+
+2. **Status messages**:
+   - Clear operation descriptions
+   - Success confirmations
+   - Estimated time remaining
+
+### 6.3 Interactive Features
+
+1. **Setup wizard**:
+   - Guide through first-time setup
+   - Validate configuration
+   - Test connectivity
+
+2. **Diagnostics command**:
+   - Check all dependencies
+   - Verify OAuth setup
+   - Test Gemini connectivity
+
+## 7. Documentation Improvements
+
+### 7.1 API Reference
+
+Generate comprehensive API docs:
+1. Install sphinx-autodoc
+2. Document all public APIs
+3. Add usage examples
+4. Include error handling guides
+
+### 7.2 Architecture Documentation
+
+Create diagrams for:
+1. Component interaction
+2. OAuth flow sequence
+3. Error handling paths
+4. Configuration hierarchy
+
+### 7.3 Troubleshooting Guide
+
+Comprehensive guide covering:
+1. Common errors and solutions
+2. Debug mode usage
+3. Log interpretation
+4. Filing bug reports
+
+## 8. Development Workflow Improvements
+
+### 8.1 Pre-commit Hooks
+
+Configure:
+1. Code formatting (black, isort)
+2. Linting (ruff)
+3. Type checking (mypy)
+4. Test execution
+5. Documentation building
+
+### 8.2 CI/CD Pipeline
+
+GitHub Actions for:
+1. Test matrix (Python 3.10, 3.11, 3.12)
+2. Coverage reporting
+3. Security scanning
+4. Release automation
+5. Documentation deployment
+
+### 8.3 Release Process
+
+1. Automated changelog generation
+2. Version bumping
+3. Tag creation
+4. PyPI publishing
+5. GitHub release notes
+
+## 9. Security Enhancements
+
+### 9.1 Input Validation
+
+1. Sanitize all user inputs
+2. Validate file paths
+3. Escape shell commands
+4. Limit resource usage
+
+### 9.2 Secure Communication
+
+1. Verify CDP connection
+2. Validate OAuth redirects
+3. Secure temporary files
+4. Clear sensitive data
+
+### 9.3 Audit Logging
+
+1. Log security events
+2. Track OAuth attempts
+3. Monitor resource usage
+4. Detect anomalies
+
+## 10. Future Roadmap
+
+### Phase 1: Stability (Current)
+- Fix critical bugs
+- Improve test coverage
+- Standardize code patterns
+
+### Phase 2: Enhancement
+- Plugin system
+- Performance optimizations
+- Advanced features
+
+### Phase 3: Expansion
+- Multi-platform support
+- Additional AI providers
+- Enterprise features
+
+## Implementation Priority
+
+1. **Week 1**: Critical bug fixes (1.1-1.3)
+2. **Week 2**: Test coverage for critical paths (2.1)
+3. **Week 3**: Configuration and logging standardization (3.1-3.2)
+4. **Week 4**: Architecture improvements (4.1-4.2)
+5. **Month 2**: Performance and UX enhancements
+6. **Month 3**: Documentation and workflow improvements
+
+## Success Metrics
+
+1. **Quality**:
+   - 90%+ test coverage
+   - 0 critical bugs
+   - <5% failure rate
+
+2. **Performance**:
+   - <2s startup time
+   - <5s OAuth flow
+   - <100MB memory usage
+
+3. **Usability**:
+   - Clear error messages
+   - Intuitive CLI
+   - Comprehensive docs
+
+4. **Maintainability**:
+   - Consistent code style
+   - Modular architecture
+   - Automated workflows
+
+This plan provides a clear path to transform geminpy from a functional prototype to a production-ready, maintainable, and user-friendly tool.
+</document_content>
+</document>
+
+<document index="12">
+<source>README.md</source>
+<document_content>
+# geminpy
+
+**Automated OAuth wrapper for Google's Gemini CLI on macOS**
+
+`geminpy` automates the OAuth 2.0 authentication process for Google's `gemini` CLI, making it actually usable for scripting and automation on macOS.
+
+## Why `geminpy`?
+
+Google's official `gemini` CLI requires manual browser authentication every time you run it. This breaks automation completely. `geminpy` fixes that by:
+
+1. **Automating OAuth**: No more clicking through Google sign-in screens
+2. **Isolating browser sessions**: Uses Chrome for Testing, leaving your main browser alone
+3. **Handling rate limits**: Switches to a fallback model automatically when quotas are hit
+4. **Clean output**: Removes authentication noise, shows only the model response
+
+## Target Audience
+
+macOS users who want to script with the Gemini CLI without fighting the authentication system.
+
+## Key Features
+
+* **Drop-in CLI replacement**: Use `geminpy` exactly like `gemini`
+* **Python API**: Simple `ask()` function for scripts
+* **Multi-language OAuth support**: Works with English, Polish, French, German, Spanish, Italian, Russian, Japanese, and Chinese
+* **Smart account handling**:
+    * Remembers your preferred Google account
+    * Takes email from CLI args, environment variables, or stored settings
+* **Rate limit fallback**: Switches to `gemini-2.5-flash` when quotas are exhausted
+* **Chrome for Testing management**:
+    * Installs it automatically if missing
+    * Handles launching and cleanup
+* **Current model aliases**: Parses local Gemini CLI to get actual "pro" and "flash" model names
+
+## Requirements
+
+* **Platform**: macOS only
+* **Python**: 3.10+
+* **Playwright browsers**: One-time setup needed:
+    ```bash
+    playwright install chromium
+    ```
+
+## Installation
+
+Using `uv` (preferred) or `pip`:
+
+```bash
+uv pip install geminpy
+```
+
+## Quick Start
+
+### Command-Line Interface
+
+Use `geminpy` like the original `gemini` CLI:
+
+```bash
+# Basic prompt
+geminpy -p "Explain relativity simply."
+
+# Model shortcuts
+geminpy -P -p "Write a factorial function."  # Gemini Pro
+geminpy -F -p "Capital of France?"          # Gemini Flash
+
+# Debug mode
+geminpy --verbose -p "Hello world"
+
+# Cleanup browser after use
+geminpy --quit-chrome -p "Quick question"
+```
+
+### Python API
+
+```python
+from geminpy import ask
+
+# Simple query
+response = ask("Main ingredient in bread?")
+print(response)
+
+# Specific model
+pro_response = ask("AI in education ideas.", model="pro")
+print(pro_response)
+
+# Advanced async control
+import asyncio
+from geminpy import call_gemini_cli
+
+async def query():
+    response = await call_gemini_cli(
+        gemini_args=["-m", "gemini-1.5-ultra", "-p", "Dark matter explanation"],
+        user="you@example.com",
+        verbose=True,
+        quit_browser=True
+    )
+    print(response or "Failed")
+
+if __name__ == "__main__":
+    asyncio.run(query())
+```
+
+## Account Configuration
+
+Priority order for Google account selection:
+
+1. **CLI argument**: `--user="you@example.com"`
+2. **Environment variable**: `GEMINI_CLI_USER`
+3. **Stored setting**: From `settings.json`
+4. **First available account**: Whatever shows up on the OAuth page
+
+First-time setup prompts for your preferred email during Chrome for Testing installation.
+
+## Troubleshooting
+
+* **"Chrome CDP did not become available"**:
+    * Kill other Chrome instances using port 9222
+    * Check availability: `curl http://localhost:9222/json/version`
+    * See Chrome errors: `/tmp/gemini_chrome_stderr.log`
+
+* **Authentication failures**:
+    * Use `--verbose` to debug OAuth flow
+    * Check saved screenshots (`oauth_error.png`)
+    * Verify Gemini access for your Google account
+
+* **Persistent rate limits**:
+    * Wait a few minutes
+    * Check quotas in Google Cloud Console
+    * `geminpy` already tries flash model automatically
+
+## Technical Details
+
+### Automation Flow
+
+1. **Setup**: Check dependencies, resolve user account, determine model name
+2. **Browser prep**: Install Chrome for Testing if needed, set as default browser
+3. **Launch**: Start Chrome with remote debugging on port 9222
+4. **Trigger**: Run `gemini` CLI subprocess (opens OAuth in Chrome for Testing)
+5. **Automate**: Playwright connects to Chrome, selects account, clicks sign-in
+6. **Monitor**: Watch CLI output for rate limits, parse clean response
+7. **Cleanup**: Restore original browser, optionally kill Chrome
+
+### Project Structure
+
+```
+src/geminpy/
+├── api.py            # Public API (ask, call_gemini_cli)
+├── cli.py            # CLI interface (Fire)
+├── __init__.py       # Package exports
+├── __main__.py       # python -m support
+├── browser/
+│   ├── automation.py # OAuth automation (Playwright)
+│   ├── chrome.py     # Chrome management
+│   └── manager.py    # Default browser switching (macdefaultbrowsy)
+├── core/
+│   ├── config.py     # Configuration dataclasses
+│   ├── constants.py  # Auth states, rate limit strings, URLs
+│   ├── exceptions.py # Custom exceptions
+│   └── models.py     # Model alias resolution
+├── gemini/
+│   ├── client.py     # Main coordinator
+│   ├── executor.py   # CLI subprocess management
+│   └── parser.py    # Response cleaning
+└── utils/
+    ├── logging.py    # Loguru setup
+    ├── platform.py   # macOS checks
+    └── storage.py    # Settings persistence
+```
+
+### Components
+
+* **`GeminiClient`**: Orchestrates everything
+* **`OAuthAutomator`**: Handles Google sign-in via Playwright
+* **`ChromeTestingManager`**: Installs and configures Chrome for Testing
+* **`ChromeManager`**: Launches Chrome process with debugging
+* **`BrowserManager`**: Switches macOS default browser temporarily
+* **`GeminiExecutor`**: Runs CLI, monitors output for rate limits
+* **`ResponseParser`**: Extracts clean model responses
+* **`UserResolver`**: Determines which Google account to use
+* **Configuration classes**: Define settings structure
+* **`SettingsManager`**: Manages `settings.json`
+* **Model resolution**: Maps "pro"/"flash" to actual model names
+
+### Settings Storage
+
+`~/Library/Application Support/com.twardoch.geminpy/settings.json`
+
+Contains:
+* `chrome_testing_path`: Chrome executable location
+* `gemini_cli_user`: Preferred Google account
+
+### Error Handling
+
+Custom exceptions for specific issues. Saves screenshots on OAuth failures for debugging.
+
+### Security
+
+* **Isolated browser**: Chrome for Testing doesn't touch your main profile
+* **Local only**: All automation runs on your machine
+* **No credential storage**: Only saves email address, no passwords or tokens
+
+## Development
+
+Built with [Hatch](https://hatch.pypa.io/).
+
+### Setup
+
+1. Clone repository
+2. Install `uv`: `pip install uv`
+3. Install dependencies: `uv pip install -e .[dev,test]`
+
+### Commands
+
+* **Tests**: `uvx hatch run test`
+* **Coverage**: `uvx hatch run test-cov`
+* **Type check**: `uvx hatch run type-check`
+* **Lint**: `uvx hatch run lint`
+* **Format**: `uvx hatch run fmt`
+* **Build**: `uvx hatch build`
+
+### Conventions
+
+* Use `uv pip` for dependencies
+* Prefer `python -m <module>`
+* Clear docstrings, descriptive names
+* Modern type hints (`str | None`, not `Optional[str]`)
+* f-strings for formatting
+* Loguru for logging
+* Fire + Rich for CLI
+* Single-purpose functions
+* `this_file: path/to/file.py` comment in each module
+
+## License
+
+MIT License - see [LICENSE](LICENSE)
+
+## See Also
+
+[LLM-CLI](https://github.com/twardoch/geminpy/blob/main/LLM-CLI.md)
+</document_content>
+</document>
+
+<document index="13">
+<source>TODO.md</source>
+<document_content>
+# Geminpy TODO List
+
+## 🚨 Critical Bug Fixes (Immediate)
+
+- [x] Fix interactive mode output suppression (Issue #102) ✅
+  - [x] Detect interactive mode by checking for absence of `-p`/`--prompt` args
+  - [x] Pass stdin/stdout/stderr as None for interactive mode
+  - [x] Skip response parsing for interactive sessions
+  - [x] Return empty string to indicate success
+
+- [x] Improve OAuth button click reliability (Issue #102) ✅
+  - [x] Implement priority-based selector strategy
+  - [x] Add button validation before clicking
+  - [x] Add retry mechanism with exponential backoff
+  - [x] Take screenshots on each attempt
+
+- [x] Fix misleading macdefaultbrowsy error messages ✅
+  - [x] Remove CLI availability checks from platform.py
+  - [x] Update error messages to reference Python package
+  - [x] Fix import error handling
+
+## 🧪 Test Coverage (Week 1-2)
+
+- [x] Add CLI tests (currently 0% coverage) ✅
+  - [x] Test basic command execution
+  - [x] Test model shortcuts (-P, -F)
+  - [x] Test interactive mode detection
+  - [x] Test error handling
+
+- [ ] Add GeminiClient tests (currently 0% coverage)
+  - [ ] Test full OAuth flow
+  - [ ] Test rate limit detection and retry
+  - [ ] Test browser management
+  - [ ] Test cleanup on exceptions
+
+- [ ] Add integration tests
+  - [ ] End-to-end OAuth flow with mocks
+  - [ ] CLI to API flow
+  - [ ] Settings persistence
+  - [ ] First-time setup flow
+
+- [ ] Fix failing OAuth automation tests
+  - [ ] Fix aiohttp mock setup issues
+  - [ ] Update test expectations
+
+## 🏗️ Code Quality (Week 2-3)
+
+- [ ] Centralize configuration management
+  - [ ] Create TimeoutConfig dataclass
+  - [ ] Create RetryConfig dataclass
+  - [ ] Add environment variable overrides
+  - [ ] Document all config options
+
+- [ ] Standardize logging patterns
+  - [ ] Define log level guidelines
+  - [ ] Update all modules to use consistent logging
+  - [ ] Add structured logging format
+  - [ ] Configure log rotation
+
+- [ ] Improve error handling
+  - [ ] Replace bare except clauses
+  - [ ] Add exception chaining
+  - [ ] Improve error messages with solutions
+  - [ ] Add cleanup in finally blocks
+
+- [ ] Add missing type hints
+  - [ ] Complete all function signatures
+  - [ ] Enable stricter mypy settings
+  - [ ] Add Protocol types for interfaces
+
+## 🔧 Architecture Improvements (Week 3-4)
+
+- [ ] Implement dependency injection
+  - [ ] Make browser_manager injectable
+  - [ ] Make oauth_automator injectable
+  - [ ] Make executor injectable
+  - [ ] Update tests to use DI
+
+- [ ] Add event system
+  - [ ] Create EventBus class
+  - [ ] Define event types
+  - [ ] Add progress events for OAuth
+  - [ ] Add rate limit events
+
+- [ ] Improve async operations
+  - [ ] Concurrent Chrome launch and npm check
+  - [ ] Connection pooling for aiohttp
+  - [ ] Lazy imports for performance
+
+## 📚 Documentation (Month 2)
+
+- [ ] Add comprehensive docstrings
+  - [ ] Document all public APIs
+  - [ ] Add parameter descriptions
+  - [ ] Include usage examples
+  - [ ] Document exceptions
+
+- [ ] Create API reference
+  - [ ] Set up Sphinx autodoc
+  - [ ] Generate HTML docs
+  - [ ] Add to CI/CD pipeline
+
+- [ ] Add architecture diagrams
+  - [ ] Component interaction diagram
+  - [ ] OAuth flow sequence diagram
+  - [ ] Error handling flowchart
+
+- [ ] Write troubleshooting guide
+  - [ ] Common errors and solutions
+  - [ ] Debug mode usage
+  - [ ] Log interpretation
+
+## 🚀 Performance Optimizations (Month 2)
+
+- [ ] Optimize startup time
+  - [ ] Implement lazy imports
+  - [ ] Cache npm root resolution
+  - [ ] Cache parsed models.js
+
+- [ ] Improve memory usage
+  - [ ] Add proper context managers
+  - [ ] Stream large outputs
+  - [ ] Clean up temporary files
+
+- [ ] Add connection pooling
+  - [ ] Reuse aiohttp session
+  - [ ] Keep CDP connection alive
+  - [ ] Cache browser instance
+
+## 🎨 User Experience (Month 2)
+
+- [ ] Improve error messages
+  - [ ] Use error template format
+  - [ ] Add actionable solutions
+  - [ ] Include relevant details
+
+- [ ] Add progress indicators
+  - [ ] Chrome installation progress
+  - [ ] OAuth flow steps
+  - [ ] Long query progress
+
+- [ ] Create setup wizard
+  - [ ] Interactive first-time setup
+  - [ ] Configuration validation
+  - [ ] Connectivity testing
+
+- [ ] Add diagnostics command
+  - [ ] Check dependencies
+  - [ ] Verify OAuth setup
+  - [ ] Test Gemini connectivity
+
+## 🔒 Security Enhancements (Month 3)
+
+- [ ] Add input validation
+  - [ ] Sanitize user inputs
+  - [ ] Validate file paths
+  - [ ] Escape shell commands
+
+- [ ] Secure communication
+  - [ ] Verify CDP connection
+  - [ ] Validate OAuth redirects
+  - [ ] Secure temp files
+
+- [ ] Add audit logging
+  - [ ] Log security events
+  - [ ] Track OAuth attempts
+  - [ ] Monitor resource usage
+
+## 🛠️ Development Workflow (Month 3)
+
+- [ ] Set up pre-commit hooks
+  - [ ] Code formatting
+  - [ ] Linting
+  - [ ] Type checking
+  - [ ] Test execution
+
+- [ ] Configure CI/CD
+  - [ ] Test matrix for Python versions
+  - [ ] Coverage reporting
+  - [ ] Security scanning
+  - [ ] Release automation
+
+- [ ] Automate release process
+  - [ ] Changelog generation
+  - [ ] Version bumping
+  - [ ] PyPI publishing
+
+## 📊 Success Metrics
+
+- [ ] Achieve 90%+ test coverage
+- [ ] Zero critical bugs
+- [ ] <2s startup time
+- [ ] <5s OAuth flow completion
+- [ ] 100% type hint coverage
+- [ ] All logs using standard format
+- [ ] Comprehensive API documentation
+- [ ] Automated release pipeline
+
+## 🗓️ Implementation Schedule
+
+**Week 1**: Critical bug fixes
+**Week 2**: Test coverage improvements
+**Week 3**: Code quality and configuration
+**Week 4**: Architecture improvements
+**Month 2**: Performance, UX, and documentation
+**Month 3**: Security and workflow automation
+
+## Notes
+
+- Priority items are marked with 🚨
+- Each item should update CHANGELOG.md when completed
+- Run tests after each change
+- Update documentation as needed
+</document_content>
+</document>
+
+<document index="14">
+<source>build.sh</source>
+<document_content>
+#!/usr/bin/env bash
+
+npx repomix -i 'dist,CLAUDE.md,AGENTS.md,issues,.specstory,work' -o ./llms.txt .
+uvx hatch clean && uvx hatch build
+
+</document_content>
+</document>
+
+<document index="15">
+<source>geminpy.spec</source>
+<document_content>
+# -*- mode: python ; coding: utf-8 -*-
+from PyInstaller.utils.hooks import collect_all
+
+datas = [('src/geminpy', 'geminpy')]
+binaries = []
+hiddenimports = ['playwright', 'playwright.sync_api', 'playwright.async_api']
+tmp_ret = collect_all('loguru')
+datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
+tmp_ret = collect_all('rich')
+datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
+tmp_ret = collect_all('fire')
+datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
+tmp_ret = collect_all('playwright')
+datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
+
+
+a = Analysis(
+    ['src/geminpy/__main__.py'],
+    pathex=[],
+    binaries=binaries,
+    datas=datas,
+    hiddenimports=hiddenimports,
+    hookspath=[],
+    hooksconfig={},
+    runtime_hooks=[],
+    excludes=[],
+    noarchive=False,
+    optimize=0,
+)
+pyz = PYZ(a.pure)
+
+exe = EXE(
+    pyz,
+    a.scripts,
+    a.binaries,
+    a.datas,
+    [],
+    name='geminpy',
+    debug=False,
+    bootloader_ignore_signals=False,
+    strip=False,
+    upx=True,
+    upx_exclude=[],
+    runtime_tmpdir=None,
+    console=True,
+    disable_windowed_traceback=False,
+    argv_emulation=False,
+    target_arch=None,
+    codesign_identity=None,
+    entitlements_file=None,
+)
+
+</document_content>
+</document>
+
+<document index="16">
+<source>issues/101.txt</source>
+<document_content>
+python -m geminpy -p "Capital of Poland?" --verbose
+
+```
+No specific user configured - will use first available account
+Original default browser: testing
+Using existing Chrome for Testing: /Applications/chrome/mac-138.0.7204.49/chrome-mac-x64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing
+Chrome for Testing path: /Applications/chrome/mac-138.0.7204.49/chrome-mac-x64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing
+Chrome CDP already listening — using existing browser.
+Waiting for Chrome CDP port to open...
+Chrome CDP is ready after 1 attempts.
+Running gemini: gemini -y -p Capital of Poland?
+Starting OAuth automation flow...
+Connecting to Chrome over CDP...
+Searching for Google OAuth page among open tabs...
+Found potential OAuth page: https://accounts.google.com/o/oauth2/v2/auth?redirect_uri=http%3A%2F%2Flocalhost%3A51479%2Foauth2callback&access_type=offline&scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fcloud-platform%20https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fuserinfo.email%20https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fuserinfo.profile&state=9d3baa3e22a4f59096db541707509739dce59cb560448f39e38f8f840d809f09&response_type=code&client_id=681255809395-oo8ft2oprdrnp9e3aqf6av3hmdib135j.apps.googleusercontent.com
+Automating page: https://accounts.google.com/o/oauth2/v2/auth?redirect_uri=http%3A%2F%2Flocalhost%3A51479%2Foauth2callback&access_type=offline&scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fcloud-platform%20https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fuserinfo.email%20https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fuserinfo.profile&state=9d3baa3e22a4f59096db541707509739dce59cb560448f39e38f8f840d809f09&response_type=code&client_id=681255809395-oo8ft2oprdrnp9e3aqf6av3hmdib135j.apps.googleusercontent.com
+Looking for first available account
+Account found (1 matches), clicking it...
+Waiting for the approval page to load...
+Looking for sign-in button...
+Sign-in button found, clicking it...
+Waiting for success redirect...
+OAuth flow completed successfully ✔
+Success page reached: https://developers.google.com/gemini-code-assist/auth/auth_success_gemini
+Closing success tab...
+Success tab closed successfully
+Stopping Playwright.
+Automation flow finished.
+Waiting for gemini process to complete...
+Gemini process completed with return code: 1
+Gemini process failed with return code: 1
+Rate limit detected, retrying with gemini-2.5-flash model...
+Running gemini: gemini -y -m gemini-2.5-flash -p Capital of Poland?
+Starting OAuth automation flow...
+Connecting to Chrome over CDP...
+Searching for Google OAuth page among open tabs...
+Found potential OAuth page: https://accounts.google.com/o/oauth2/v2/auth?redirect_uri=http%3A%2F%2Flocalhost%3A51546%2Foauth2callback&access_type=offline&scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fcloud-platform%20https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fuserinfo.email%20https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fuserinfo.profile&state=52afb0e2f34a05b3dfb816726a5b2055f2cefe9fe74fa6fdf105a8d6f7a3b534&response_type=code&client_id=681255809395-oo8ft2oprdrnp9e3aqf6av3hmdib135j.apps.googleusercontent.com
+Automating page: https://accounts.google.com/o/oauth2/v2/auth?redirect_uri=http%3A%2F%2Flocalhost%3A51546%2Foauth2callback&access_type=offline&scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fcloud-platform%20https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fuserinfo.email%20https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fuserinfo.profile&state=52afb0e2f34a05b3dfb816726a5b2055f2cefe9fe74fa6fdf105a8d6f7a3b534&response_type=code&client_id=681255809395-oo8ft2oprdrnp9e3aqf6av3hmdib135j.apps.googleusercontent.com
+Looking for first available account
+Account found (1 matches), clicking it...
+Waiting for the approval page to load...
+Looking for sign-in button...
+An error occurred during OAuth automation: Could not find 'Sign in' or 'Continue' button using get_by_role.
+Saved a screenshot to oauth_error.png for debugging.
+Stopping Playwright.
+OAuth automation failed: Could not find 'Sign in' or 'Continue' button using get_by_role.
+Failed to get response from Gemini
+```
+
+Check `./oauth_error_no_signin.png` and `./oauth_error.png`
+
+</document_content>
+</document>
+
+<document index="17">
+<source>issues/102.txt</source>
+<document_content>
+1. When I do 
+
+```
+geminpy -p "Capital of Australia?"
+```
+
+- On the 2nd auth page sometimes the app does not click "Sign in" but something else. Instead I get a small dialog "Developer info
+Email: gemini-code-assist@google.com
+You can use this email to contact the app developer."
+
+TASK: Increase reliability of clicking "Sign in" or its equivalent in a different language, and not clicking anything else. 
+
+2. When I just do 
+
+```
+geminpy
+```
+
+then after signing in I have to cancel because the Gemini CLI does not appear. 
+
+```
+^CTraceback (most recent call last):
+  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/asyncio/base_events.py", line 686, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+asyncio.exceptions.CancelledError
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Library/Frameworks/Python.framework/Versions/3.12/bin/geminpy", line 10, in <module>
+    sys.exit(main())
+             ^^^^^^
+  File "/Users/adam/Developer/vcs/github.twardoch/pub/geminpy/src/geminpy/cli.py", line 82, in main
+    fire.Fire(cli)
+  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/fire/core.py", line 135, in Fire
+    component_trace = _Fire(component, args, parsed_flag_args, context, name)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/fire/core.py", line 468, in _Fire
+    component, remaining_args = _CallAndUpdateTrace(
+                                ^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/fire/core.py", line 684, in _CallAndUpdateTrace
+    component = fn(*varargs, **kwargs)
+                ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/adam/Developer/vcs/github.twardoch/pub/geminpy/src/geminpy/cli.py", line 63, in cli
+    response = asyncio.run(
+               ^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/asyncio/runners.py", line 194, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/asyncio/runners.py", line 123, in run
+    raise KeyboardInterrupt()
+KeyboardInterrupt
+```
+
+3. When I do 
+
+```
+geminpy --verbose
+```
+
+```
+Using user from settings.json: fontlab.ltd.spzoo@gmail.com
+Failed to get current default browser: Required command 'macdefaultbrowsy' not found. Install with: brew install macdefaultbrowsy
+Original default browser: None
+Using existing Chrome for Testing: /Applications/chrome/mac-138.0.7204.49/chrome-mac-x64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing
+Chrome for Testing path: /Applications/chrome/mac-138.0.7204.49/chrome-mac-x64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing
+Setting 'testing' as default browser
+Failed to set default browser to testing: Required command 'macdefaultbrowsy' not found. Install with: brew install macdefaultbrowsy
+Chrome CDP already listening — using existing browser.
+Waiting for Chrome CDP port to open...
+Chrome CDP is ready after 1 attempts.
+Running gemini: gemini -y
+Starting OAuth automation flow...
+Connecting to Chrome over CDP...
+Searching for Google OAuth page among open tabs...
+Found potential OAuth page: https://accounts.google.com/o/oauth2/v2/auth?redirect_uri=http%3A%2F%2Flocalhost%3A61141%2Foauth2callback&access_type=offline&scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fcloud-platform%20https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fuserinfo.email%20https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fuserinfo.profile&state=d9c31bab40f85d25c19e011c4ecb1e168cbe8897ce54923c876d3da43514f7b4&response_type=code&client_id=681255809395-oo8ft2oprdrnp9e3aqf6av3hmdib135j.apps.googleusercontent.com
+Automating page: https://accounts.google.com/o/oauth2/v2/auth?redirect_uri=http%3A%2F%2Flocalhost%3A61141%2Foauth2callback&access_type=offline&scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fcloud-platform%20https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fuserinfo.email%20https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fuserinfo.profile&state=d9c31bab40f85d25c19e011c4ecb1e168cbe8897ce54923c876d3da43514f7b4&response_type=code&client_id=681255809395-oo8ft2oprdrnp9e3aqf6av3hmdib135j.apps.googleusercontent.com
+Looking for specific account: fontlab.ltd.spzoo@gmail.com
+Account found (1 matches), clicking it...
+Waiting for the approval page to load...
+Looking for sign-in button...
+Found sign-in button using selector: button[jsname]
+Sign-in button found, clicking it...
+Waiting for success redirect...
+OAuth flow completed successfully ✔
+Success page reached: https://developers.google.com/gemini-code-assist/auth/auth_success_gemini
+Closing success tab...
+Success tab closed successfully
+Stopping Playwright.
+Automation flow finished.
+Waiting for gemini process to complete...
+```
+
+TASK 1: `Failed to set default browser to testing: Required command 'macdefaultbrowsy' not found. Install with: brew install macdefaultbrowsy` this is not needed at all because we use the Python package and not CLI command for macdefaultbrowsy
+
+TASK 2: The Gemini CLI suppression (so that we only get the final answer from the model) is OK if I provide `-p` to the model. But if we run gemini CLI without `-p` (= in interactive mode) then we need to show the full interactive output of the gemini task!  
+</document_content>
+</document>
+
+<document index="18">
+<source>issues/103.txt</source>
+<document_content>
+1. 
+
+When we run the tool for the very first time and settings.json does not exist, the tool currently installs the Chrome for Testing browser, is that right? 
+
+If that is happening, then before we save settings.json, we need to give the user the chance to also fill in the `gemini_cli_user` setting (interactively). The user can input it, and then the setting gets saved, and if the user just presses Enter (we get nothing), then the setting gets NOT saved in the settings.json
+
+Got it?
+
+2. 
+
+`src/geminpy/utils/platform.py` has all these checks, tries etc. for macdefaultbrowsy being or not being available. Streamline that, clean it up. We just import macdefaultbrowsy because that's in our project requirements. We don't need to check its existence on every step. 
+</document_content>
+</document>
+
+<document index="19">
+<source>issues/104.txt</source>
+<document_content>
+Record all recent changes in CHANGELOG.md. 
+
+Run `npx repomix -o ./llms.txt .` and analyze the entire codebase (./llms.txt ). Into PLAN.md, make an extensive detailed step-by-step itemized plan that discusses at length how to streamline the code. 
+
+Then write a simplified `- [ ]` prefixed list of that plan into TODO.md. 
+
+Then re-read PLAN.md and TODO.md, and start implementing. Record all changes in CHANGELOG.md and keep updating PLAN.md and TODO.md to reflect the progress. 
+
+Implement all changes that lead to a well-functioning, elegant, efficient project. Keep documentation and the build tooling in sync with the codebase. 
+
+</document_content>
+</document>
+
+<document index="20">
+<source>md.txt</source>
+<document_content>
+
+
+
+/Users/adam/Developer/vcs/github.twardoch/pub/geminpy/DEPLOYMENT.md
+/Users/adam/Developer/vcs/github.twardoch/pub/geminpy/LLM-CLI.md
+
+/Users/adam/Developer/vcs/github.twardoch/pub/geminpy/README.md
+
+
+</document_content>
+</document>
+
+<document index="21">
+<source>package.toml</source>
+<document_content>
+# Package configuration
+[package]
+include_cli = true        # Include CLI boilerplate
+include_logging = true    # Include logging setup
+use_pydantic = true      # Use Pydantic for data validation
+use_rich = true          # Use Rich for terminal output
+
+[features]
+mkdocs = false           # Enable MkDocs documentation
+vcs = true              # Initialize Git repository
+github_actions = true   # Add GitHub Actions workflows 
+</document_content>
+</document>
+
+<document index="22">
+<source>pyproject.toml</source>
+<document_content>
+# this_file: pyproject.toml
+#==============================================================================
+# GEMINPY PACKAGE CONFIGURATION
+# This pyproject.toml defines the package metadata, dependencies, build system,
+# and development environment for the geminpy package.
+#==============================================================================
+
+#------------------------------------------------------------------------------
+# PROJECT METADATA
+# Core package information used by PyPI and package managers.
+#------------------------------------------------------------------------------
+[project]
+name = 'geminpy' # Package name on PyPI
+description = 'Automated OAuth wrapper for Google Gemini CLI on macOS' # Short description
+readme = 'README.md' # Path to README file
+requires-python = '>=3.10' # Minimum Python version
+keywords = [
+] # Keywords for PyPI search
+dynamic = ["version"] # Fields set dynamically at build time
+
+# PyPI classifiers for package categorization
+classifiers = [
+    'Development Status :: 4 - Beta', # Package maturity level
+    'Programming Language :: Python',
+    'Programming Language :: Python :: 3.10',
+    'Programming Language :: Python :: 3.11',
+    'Programming Language :: Python :: 3.12',
+    'Programming Language :: Python :: Implementation :: CPython',
+    'Programming Language :: Python :: Implementation :: PyPy',
+    'Operating System :: OS Independent',
+    'License :: OSI Approved :: MIT License',
+    'Intended Audience :: Developers',
+]
+
+dependencies = [
+    "fire>=0.5.0",
+    "playwright>=1.43.0",
+    "requests>=2.31.0",
+    "platformdirs>=4.0.0",
+    "loguru>=0.7.0",
+    "rich>=13.0.0",
+    "macdefaultbrowsy>=2.1.1; sys_platform == 'darwin'",
+    "aiohttp>=3.8.0",
+]
+
+# Author information
+[[project.authors]]
+name = 'Adam Twardoch'
+email = 'adam+github@twardoch.com'
+
+# License information
+[project.license]
+text = 'MIT'
+
+# Project URLs
+[project.urls]
+Documentation = 'https://github.com/twardoch/geminpy#readme'
+Issues = 'https://github.com/twardoch/geminpy/issues'
+Source = 'https://github.com/twardoch/geminpy'
+
+#------------------------------------------------------------------------------
+# OPTIONAL DEPENDENCIES
+# Additional dependencies for optional features, development, and testing.
+#------------------------------------------------------------------------------
+[project.optional-dependencies]
+
+# Development tools
+dev = [
+    'pre-commit>=4.1.0', # Pre-commit hook manager - Keep pre-commit as is, update if newer pre-commit version is required
+    'ruff>=0.9.7', # Linting and formatting - Keep ruff as is, update if newer ruff version is required
+    'mypy>=1.15.0', # Type checking - Keep mypy as is, update if newer mypy version is required
+    'absolufy-imports>=0.3.1', # Convert relative imports to absolute - Keep absolufy-imports as is, update if newer absolufy-imports version is required
+    'pyupgrade>=3.19.1', # Upgrade Python syntax - Keep pyupgrade as is, update if newer pyupgrade version is required
+    'isort>=6.0.1', # Sort imports - Keep isort as is, update if newer isort version is required
+]
+
+# Binary compilation dependencies
+build = [
+    'pyinstaller>=6.0.0', # Binary compilation
+    'cx-freeze>=7.0.0', # Alternative binary compilation
+]
+
+# Testing tools and frameworks
+test = [
+    'pytest>=8.3.4', # Testing framework - Keep pytest as is, update if newer pytest version is required
+    'pytest-cov>=6.0.0', # Coverage plugin for pytest - Keep pytest-cov as is, update if newer pytest-cov version is required
+    'pytest-xdist>=3.6.1', # Parallel test execution - Keep pytest-xdist as is, update if newer pytest-xdist version is required
+    'pytest-benchmark[histogram]>=5.1.0', # Benchmarking plugin - Keep pytest-benchmark as is, update if newer pytest-benchmark version is required
+    'pytest-asyncio>=0.25.3', # Async test support - Keep pytest-asyncio as is, update if newer pytest-asyncio version is required
+    'coverage[toml]>=7.6.12',
+]
+
+docs = [
+    "sphinx>=7.2.6",
+    "sphinx-rtd-theme>=2.0.0",
+    "sphinx-autodoc-typehints>=2.0.0",
+    "myst-parser>=3.0.0", # Markdown support in Sphinx
+]
+
+# All optional dependencies combined
+all = [
+    "aiohttp>=3.8.0",
+    "fire>=0.5.0",
+    "loguru>=0.7.0",
+    "macdefaultbrowsy>=2.1.1",
+    "myst-parser>=3.0.0", # Markdown support in Sphinx
+    "platformdirs>=4.0.0",
+    "playwright>=1.43.0",
+    "requests>=2.31.0",
+    "rich>=13.0.0",
+    "sphinx-autodoc-typehints>=2.0.0",
+    "sphinx-rtd-theme>=2.0.0",
+    "sphinx>=7.2.6",
+    'absolufy-imports>=0.3.1', # Convert relative imports to absolute - Keep absolufy-imports as is, update if newer absolufy-imports version is required
+    'coverage[toml]>=7.6.12',
+    'isort>=6.0.1', # Sort imports - Keep isort as is, update if newer isort version is required
+    'mypy>=1.15.0', # Type checking - Keep mypy as is, update if newer mypy version is required
+    'pre-commit>=4.1.0', # Pre-commit hook manager - Keep pre-commit as is, update if newer pre-commit version is required
+    'pytest-asyncio>=0.25.3', # Async test support - Keep pytest-asyncio as is, update if newer pytest-asyncio version is required
+    'pytest-benchmark[histogram]>=5.1.0', # Benchmarking plugin - Keep pytest-benchmark as is, update if newer pytest-benchmark version is required
+    'pytest-cov>=6.0.0', # Coverage plugin for pytest - Keep pytest-cov as is, update if newer pytest-cov version is required
+    'pytest-xdist>=3.6.1', # Parallel test execution - Keep pytest-xdist as is, update if newer pytest-xdist version is required
+    'pytest>=8.3.4', # Testing framework - Keep pytest as is, update if newer pytest version is required
+    'pyupgrade>=3.19.1', # Upgrade Python syntax - Keep pyupgrade as is, update if newer pyupgrade version is required
+    'ruff>=0.9.7', # Linting and formatting - Keep ruff as is, update if newer ruff version is required
+]
+
+#------------------------------------------------------------------------------
+# COMMAND-LINE SCRIPTS
+# Entry points for command-line executables installed with the package.
+#------------------------------------------------------------------------------
+[project.scripts]
+geminpy = "geminpy.cli:main"
+
+#------------------------------------------------------------------------------
+# BUILD SYSTEM CONFIGURATION
+# Defines the tools required to build the package and the build backend.
+#------------------------------------------------------------------------------
+[build-system]
+# Hatchling is a modern build backend for Python packaging
+# hatch-vcs integrates with version control systems for versioning
+requires = [
+    'hatchling>=1.27.0', # Keep hatchling as is, update if newer hatchling version is required
+    'hatch-vcs>=0.4.0', # Keep hatch-vcs as is, update if newer hatch-vcs version is required
+]
+build-backend = 'hatchling.build' # Specifies Hatchling as the build backend
+
+
+#------------------------------------------------------------------------------
+# HATCH BUILD CONFIGURATION
+# Configures the build process, specifying which packages to include and
+# how to handle versioning.
+#------------------------------------------------------------------------------
+[tool.hatch.build]
+# Include package data files
+include = [
+    "src/geminpy/py.typed", # For better type checking support
+    "src/geminpy/data/**/*", # Include data files if any
+
+]
+exclude = ["**/__pycache__", "**/.pytest_cache", "**/.mypy_cache"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/geminpy"]
+reproducible = true
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "src/geminpy/**/*.py",
+    "README.md",
+    "LICENSE",
+    "pyproject.toml",
+]
+
+# Version control system hook configuration
+# Automatically updates the version file from git tags
+[tool.hatch.build.hooks.vcs]
+version-file = "src/geminpy/__version__.py"
+
+# Version source configuration
+[tool.hatch.version]
+source = 'vcs' # Get version from git tags or other VCS info
+
+# Metadata handling configuration
+[tool.hatch.metadata]
+allow-direct-references = true # Allow direct references in metadata (useful for local dependencies)
+
+
+#------------------------------------------------------------------------------
+# DEVELOPMENT ENVIRONMENTS
+
+[tool.hatch.envs.default]
+features = ['dev', 'test', 'all']
+dependencies = [
+]
+
+# Commands available in the default environment
+[tool.hatch.envs.default.scripts]
+# Run tests with optional arguments
+test = 'pytest {args:tests}'
+# Run tests with coverage reporting
+test-cov = "pytest --cov-report=term-missing --cov-config=pyproject.toml --cov=src/geminpy --cov=tests {args:tests}"
+# Run type checking
+type-check = "mypy src/geminpy tests"
+# Run linting and formatting
+lint = ["ruff check src/geminpy tests", "ruff format --respect-gitignore src/geminpy tests"]
+# Format and fix style issues
+fmt = ["ruff format --respect-gitignore src/geminpy tests", "ruff check --fix src/geminpy tests"]
+fix = ["ruff check --fix --unsafe-fixes src/geminpy tests", "ruff format --respect-gitignore src/geminpy tests"]
+
+# Matrix configuration to test across multiple Python versions
+
+[[tool.hatch.envs.all.matrix]]
+python = ["3.10", "3.11", "3.12"]
+
+#------------------------------------------------------------------------------
+# SPECIALIZED ENVIRONMENTS
+# Additional environments for specific development tasks.
+#------------------------------------------------------------------------------
+
+# Dedicated environment for linting and code quality checks
+[tool.hatch.envs.lint]
+detached = true # Create a separate, isolated environment
+features = ['dev'] # Use dev extras  dependencies 
+
+# Linting environment commands
+[tool.hatch.envs.lint.scripts]
+# Type checking with automatic type installation
+typing = "mypy --install-types --non-interactive {args:src/geminpy tests}"
+# Check style and format code
+style = ["ruff check {args:.}", "ruff format --respect-gitignore {args:.}"]
+# Format and fix style issues
+fmt = ["ruff format --respect-gitignore {args:.}", "ruff check --fix {args:.}"]
+fix = ["ruff check --fix --unsafe-fixes {args:.}", "ruff format --respect-gitignore {args:.}"]
+# Run all ops
+all = ["style", "typing", "fix"]
+
+# Dedicated environment for testing
+[tool.hatch.envs.test]
+features = ['test'] # Use test extras as dependencies
+
+# Testing environment commands
+[tool.hatch.envs.test.scripts]
+# Run tests in parallel
+test = "python -m pytest -n auto {args:tests}"
+# Run tests with coverage in parallel
+test-cov = "python -m pytest -n auto --cov-report=term-missing --cov-config=pyproject.toml --cov=src/geminpy --cov=tests {args:tests}"
+# Run benchmarks
+bench = "python -m pytest -v -p no:briefcase tests/test_benchmark.py --benchmark-only"
+# Run benchmarks and save results
+bench-save = "python -m pytest -v -p no:briefcase tests/test_benchmark.py --benchmark-only --benchmark-json=benchmark/results.json"
+
+# Documentation environment
+[tool.hatch.envs.docs]
+features = ['docs']
+
+# Documentation environment commands
+[tool.hatch.envs.docs.scripts]
+build = "sphinx-build -b html docs/source docs/build"
+
+# GitHub Actions workflow configuration
+[tool.hatch.envs.ci]
+features = ['test']
+
+[tool.hatch.envs.ci.scripts]
+test = "pytest --cov=src/geminpy --cov-report=xml"
+
+# Build environment for binary compilation
+[tool.hatch.envs.build]
+features = ['build']
+
+[tool.hatch.envs.build.scripts]
+binary = "pyinstaller --onefile --name geminpy --add-data 'src/geminpy:geminpy' src/geminpy/__main__.py"
+binary-windowed = "pyinstaller --onefile --windowed --name geminpy --add-data 'src/geminpy:geminpy' src/geminpy/__main__.py"
+clean = "rm -rf build dist *.spec"
+
+
+#------------------------------------------------------------------------------
+# CODE QUALITY TOOLS
+# Configuration for linting, formatting, and code quality enforcement.
+#------------------------------------------------------------------------------
+
+#------------------------------------------------------------------------------
+# COVERAGE CONFIGURATION
+# Settings for test coverage measurement and reporting.
+#------------------------------------------------------------------------------
+
+# Path mapping for coverage in different environments
+[tool.coverage.paths]
+geminpy = ["src/geminpy", "*/geminpy/src/geminpy"]
+tests = ["tests", "*/geminpy/tests"]
+
+# Coverage report configuration
+[tool.coverage.report]
+# Lines to exclude from coverage reporting
+exclude_lines = [
+    'no cov', # Custom marker to skip coverage
+    'if __name__ == .__main__.:', # Script execution guard
+    'if TYPE_CHECKING:', # Type checking imports and code
+    'pass', # Empty pass statements
+    'raise NotImplementedError', # Unimplemented method placeholders
+    'raise ImportError', # Import error handling
+    'except ImportError', # Import error handling
+    'except KeyError', # Common error handling
+    'except AttributeError', # Common error handling
+    'except NotImplementedError', # Common error handling
+]
+
+[tool.coverage.run]
+source_pkgs = ["src/geminpy", "tests"]
+branch = true # Measure branch coverage (if/else statements)
+parallel = true # Support parallel test execution
+omit = [
+    "src/geminpy/__about__.py",
+]
+
+#------------------------------------------------------------------------------
+# MYPY CONFIGURATION
+# Configuration for type checking with mypy.
+#------------------------------------------------------------------------------
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = false
+warn_unused_configs = false
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+check_untyped_defs = false
+disallow_untyped_decorators = false
+no_implicit_optional = false
+warn_redundant_casts = false
+warn_unused_ignores = false
+warn_no_return = false
+warn_unreachable = false
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["tests.*"]
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+ignore_errors = true
+
+#------------------------------------------------------------------------------
+# PYTEST CONFIGURATION
+# Configuration for pytest, including markers, options, and benchmark settings.
+#------------------------------------------------------------------------------
+
+[tool.pytest.ini_options]
+addopts = "-v --durations=10 -p no:briefcase"
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+console_output_style = "progress"
+filterwarnings = ["ignore::DeprecationWarning", "ignore::UserWarning"]
+log_cli = true
+log_cli_level = "INFO"
+markers = [
+    "benchmark: marks tests as benchmarks (select with '-m benchmark')",
+    "unit: mark a test as a unit test",
+    "integration: mark a test as an integration test",
+    "permutation: tests for permutation functionality", 
+    "parameter: tests for parameter parsing",
+    "prompt: tests for prompt parsing",
+]
+norecursedirs = [
+    ".*",
+    "build",
+    "dist", 
+    "venv",
+    "__pycache__",
+    "*.egg-info",
+    "_private",
+]
+python_classes = ["Test*"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+testpaths = ["tests"]
+
+[tool.pytest-benchmark]
+min_rounds = 100
+min_time = 0.1
+histogram = true
+storage = "file"
+save-data = true
+compare = [
+    "min",    # Minimum time
+    "max",    # Maximum time
+    "mean",   # Mean time
+    "stddev", # Standard deviation
+    "median", # Median time
+    "iqr",    # Inter-quartile range
+    "ops",    # Operations per second
+    "rounds", # Number of rounds
+]
+
+#------------------------------------------------------------------------------
+# RUFF CONFIGURATION
+# Configuration for Ruff, including linter and formatter settings.
+#------------------------------------------------------------------------------ 
+
+# Ruff linter and formatter configuration
+[tool.ruff]
+target-version = "py310"
+line-length = 120
+
+# Linting rules configuration
+[tool.ruff.lint]
+# Rule sets to enable, organized by category
+select = [
+    # flake8 plugins and extensions
+    'A', # flake8-builtins: checks for shadowed builtins
+    'ARG', # flake8-unused-arguments: checks for unused function arguments
+    'ASYNC', # flake8-async: checks for async/await issues
+    'B', # flake8-bugbear: finds likely bugs and design problems
+    'C', # flake8-comprehensions: helps write better list/dict comprehensions
+    'DTZ', # flake8-datetimez: checks for datetime timezone issues
+    'E', # pycodestyle errors: PEP 8 style guide errors
+    'EM', # flake8-errmsg: checks for better error messages
+    'F', # pyflakes: detects various errors
+    'FBT', # flake8-boolean-trap: checks for boolean traps in function signatures
+    'I', # isort: sorts imports
+    'ICN', # flake8-import-conventions: checks for import conventions
+    'ISC', # flake8-implicit-str-concat: checks for implicit string concatenation
+    'LOG', # flake8-logging: checks for logging issues
+    'N', # pep8-naming: checks naming conventions
+    'PLC', # pylint convention: checks for convention issues
+    'PLE', # pylint error: checks for errors
+    'PLR', # pylint refactor: suggests refactors
+    'PLW', # pylint warning: checks for suspicious code
+    'PT', # flake8-pytest-style: checks pytest-specific style
+    'PTH', # flake8-use-pathlib: checks for stdlib path usage vs pathlib
+    'PYI', # flake8-pyi: checks stub files
+    'RET', # flake8-return: checks return statement consistency
+    'RSE', # flake8-raise: checks raise statements
+    'RUF', # Ruff-specific rules
+    'S', # flake8-bandit: checks for security issues
+    'SIM', # flake8-simplify: checks for code simplification opportunities
+    'T', # flake8-print: checks for print statements
+    'TCH', # flake8-type-checking: helps with type-checking
+    'TID', # flake8-tidy-imports: checks for tidy import statements
+    'UP', # pyupgrade: checks for opportunities to use newer Python features
+    'W', # pycodestyle warnings: PEP 8 style guide warnings
+    'YTT', # flake8-2020: checks for misuse of sys.version or sys.version_info
+
+]
+# Rules to ignore (with reasons)
+ignore = [
+    'ARG002', # Unused method argument - sometimes needed for interface compliance
+    'B027', # Empty method in abstract base class - sometimes needed for interfaces
+    'C901', # Function is too complex - sometimes complexity is necessary
+    'FBT001', # Boolean-typed positional argument - needed for CLI/API
+    'FBT002', # Boolean default positional argument - needed for CLI/API
+    'FBT003', # Boolean positional argument in function definition - sometimes unavoidable
+    'PLC0415', # Import should be at top-level - sometimes needed for conditional imports
+    'PLR0911', # Too many return statements - sometimes needed for readability
+    'PLR0912', # Too many branches - sometimes needed for complex logic
+    'PLR0913', # Too many arguments - sometimes needed in APIs
+    'PLR0915', # Too many statements - sometimes needed for comprehensive functions
+    'PLR1714', # Consider merging multiple comparisons - sometimes less readable
+    'PLW0603', # Using the global statement - sometimes necessary
+    'PT013', # Pytest explicit test parameter - sometimes clearer
+    'PTH123', # Path traversal - sometimes needed
+    'PYI056', # Calling open() in pyi file - sometimes needed in type stubs
+    'S105', # Possible hardcoded password - often false positives
+    'S106', # Possible hardcoded password - often false positives
+    'S107', # Possible hardcoded password - often false positives
+    'S110', # try-except-pass - sometimes valid for suppressing exceptions
+    'S603', # subprocess call: check for execution of untrusted input - needed for CLI integration
+    'SIM102', # Nested if statements - sometimes more readable than combined conditions
+    'SIM117', # Use single with statement - sometimes nested is clearer
+    'F401', # Unused import - sometimes needed for testing/mocking
+    'ARG001', # Unused function argument - sometimes needed for interface compliance
+    'ASYNC210', # Async functions should not call blocking HTTP methods - sometimes needed
+    'ASYNC220', # Async functions should not create subprocesses - sometimes needed
+    'B904', # Within an `except` clause, raise exceptions with `raise ... from err` - sometimes we want to hide chain
+    'E501', # Line too long - handled by formatter
+    'E722', # Do not use bare except - sometimes needed
+    'N803', # Argument name should be lowercase - CLI args need short names
+    'PLR2004', # Magic value used in comparison - sometimes OK for simple cases
+    'PLW2901', # For loop variable overwritten - sometimes needed
+    'RUF012', # Mutable class attributes should be annotated with ClassVar - sometimes overkill
+    'S108', # Probable insecure usage of temporary file - needed for testing
+    'S607', # Starting a process with a partial executable path - needed for CLI tools
+    'UP035', # typing.Dict is deprecated - legacy code
+]
+# Rules that should not be automatically fixed
+unfixable = [
+    'F401', # Don't automatically remove unused imports - may be needed later
+
+]
+# Configure exclude to ignore specific directories
+exclude = [".git", ".venv", "venv", "dist", "build"]
+
+# isort configuration within Ruff
+[tool.ruff.lint.isort]
+known-first-party = ['geminpy'] # Treat as first-party imports for sorting
+
+# flake8-tidy-imports configuration within Ruff
+[tool.ruff.lint.flake8-tidy-imports]
+ban-relative-imports = 'all' # Ban all relative imports for consistency
+
+# Per-file rule exceptions
+[tool.ruff.lint.per-file-ignores]
+# Tests can use magic values, assertions, and relative imports
+'tests/**/*' = [
+    'PLR2004', # Allow magic values in tests for readability
+    'S101', # Allow assertions in tests
+    'TID252'
+    # Allow relative imports in tests for convenience
+]
+
+</document_content>
+</document>
+
+<document index="23">
+<source>scripts/build.sh</source>
+<document_content>
+#!/usr/bin/env bash
+# this_file: scripts/build.sh
+# Build script for geminpy package
+
+set -euo pipefail
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+# Configuration
+PROJECT_NAME="geminpy"
+DIST_DIR="dist"
+BUILD_DIR="build"
+
+# Print colored output
+print_info() {
+    echo -e "${BLUE}[INFO]${NC} $1"
+}
+
+print_success() {
+    echo -e "${GREEN}[SUCCESS]${NC} $1"
+}
+
+print_warning() {
+    echo -e "${YELLOW}[WARNING]${NC} $1"
+}
+
+print_error() {
+    echo -e "${RED}[ERROR]${NC} $1"
+}
+
+# Check if uv is available
+check_uv() {
+    if ! command -v uv &> /dev/null; then
+        print_error "uv is not installed. Please install uv first:"
+        print_info "curl -LsSf https://astral.sh/uv/install.sh | sh"
+        exit 1
+    fi
+}
+
+# Clean previous builds
+clean_build() {
+    print_info "Cleaning previous builds..."
+    rm -rf "$DIST_DIR" "$BUILD_DIR" *.egg-info
+    uvx hatch clean
+    print_success "Build directories cleaned"
+}
+
+# Build wheel and sdist
+build_package() {
+    print_info "Building package..."
+    uvx hatch build
+    print_success "Package built successfully"
+}
+
+# Create binary executable
+build_binary() {
+    print_info "Building binary executable..."
+    
+    # Create temporary environment for binary building
+    if [ -d ".build_env" ]; then
+        rm -rf .build_env
+    fi
+    
+    uv venv .build_env
+    source .build_env/bin/activate
+    
+    # Install dependencies for binary building
+    uv pip install pyinstaller
+    uv pip install -e .
+    
+    # Build binary
+    pyinstaller --onefile \
+        --name "$PROJECT_NAME" \
+        --add-data "src/$PROJECT_NAME:$PROJECT_NAME" \
+        --collect-all loguru \
+        --collect-all rich \
+        --collect-all fire \
+        --collect-all playwright \
+        --hidden-import=playwright \
+        --hidden-import=playwright.sync_api \
+        --hidden-import=playwright.async_api \
+        "src/$PROJECT_NAME/__main__.py"
+    
+    deactivate
+    rm -rf .build_env
+    
+    print_success "Binary built successfully: dist/$PROJECT_NAME"
+}
+
+# Main function
+main() {
+    print_info "Starting build process for $PROJECT_NAME..."
+    
+    check_uv
+    clean_build
+    build_package
+    
+    # Build binary if requested
+    if [[ "${1:-}" == "--binary" ]]; then
+        build_binary
+    fi
+    
+    print_success "Build completed successfully!"
+    print_info "Artifacts available in: $DIST_DIR/"
+    ls -la "$DIST_DIR/"
+}
+
+# Run main function
+main "$@"
+</document_content>
+</document>
+
+<document index="24">
+<source>scripts/release.sh</source>
+<document_content>
+#!/usr/bin/env bash
+# this_file: scripts/release.sh
+# Release script for geminpy package
+
+set -euo pipefail
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+# Configuration
+PROJECT_NAME="geminpy"
+DEFAULT_BRANCH="main"
+
+# Print colored output
+print_info() {
+    echo -e "${BLUE}[INFO]${NC} $1"
+}
+
+print_success() {
+    echo -e "${GREEN}[SUCCESS]${NC} $1"
+}
+
+print_warning() {
+    echo -e "${YELLOW}[WARNING]${NC} $1"
+}
+
+print_error() {
+    echo -e "${RED}[ERROR]${NC} $1"
+}
+
+# Check if we're in a git repository
+check_git_repo() {
+    if ! git rev-parse --git-dir > /dev/null 2>&1; then
+        print_error "Not in a git repository"
+        exit 1
+    fi
+}
+
+# Check if working directory is clean
+check_working_directory() {
+    if [ -n "$(git status --porcelain)" ]; then
+        print_error "Working directory is not clean. Please commit or stash changes."
+        git status --short
+        exit 1
+    fi
+}
+
+# Check if we're on the correct branch
+check_branch() {
+    local current_branch=$(git branch --show-current)
+    if [ "$current_branch" != "$DEFAULT_BRANCH" ]; then
+        print_error "Not on $DEFAULT_BRANCH branch (currently on $current_branch)"
+        print_info "Switch to $DEFAULT_BRANCH branch to create a release"
+        exit 1
+    fi
+}
+
+# Check if remote is up to date
+check_remote() {
+    git fetch origin
+    local local_commit=$(git rev-parse HEAD)
+    local remote_commit=$(git rev-parse origin/$DEFAULT_BRANCH)
+    
+    if [ "$local_commit" != "$remote_commit" ]; then
+        print_error "Local branch is not up to date with remote"
+        print_info "Please pull latest changes or push local changes"
+        exit 1
+    fi
+}
+
+# Parse semantic version
+parse_version() {
+    local version="$1"
+    if [[ ! "$version" =~ ^v?([0-9]+)\.([0-9]+)\.([0-9]+)(-[a-zA-Z0-9.-]+)?$ ]]; then
+        print_error "Invalid version format: $version"
+        print_info "Expected format: v1.2.3 or 1.2.3 (optionally with pre-release suffix)"
+        exit 1
+    fi
+}
+
+# Check if tag already exists
+check_tag_exists() {
+    local tag="$1"
+    if git tag -l | grep -q "^$tag$"; then
+        print_error "Tag $tag already exists"
+        exit 1
+    fi
+}
+
+# Get next version suggestion
+suggest_next_version() {
+    local latest_tag=$(git tag -l --sort=-version:refname | head -n1)
+    if [ -z "$latest_tag" ]; then
+        echo "v1.0.0"
+        return
+    fi
+    
+    # Remove 'v' prefix if present
+    local version="${latest_tag#v}"
+    
+    # Split version into parts
+    local major=$(echo "$version" | cut -d. -f1)
+    local minor=$(echo "$version" | cut -d. -f2)
+    local patch=$(echo "$version" | cut -d. -f3 | cut -d- -f1)
+    
+    # Suggest patch version bump
+    local next_patch=$((patch + 1))
+    echo "v$major.$minor.$next_patch"
+}
+
+# Run tests before release
+run_tests() {
+    print_info "Running tests before release..."
+    ./scripts/test.sh || {
+        print_error "Tests failed. Cannot proceed with release."
+        exit 1
+    }
+    print_success "Tests passed"
+}
+
+# Build package
+build_package() {
+    print_info "Building package..."
+    ./scripts/build.sh || {
+        print_error "Build failed. Cannot proceed with release."
+        exit 1
+    }
+    print_success "Package built successfully"
+}
+
+# Create and push tag
+create_tag() {
+    local version="$1"
+    local message="$2"
+    
+    print_info "Creating tag $version..."
+    git tag -a "$version" -m "$message"
+    
+    print_info "Pushing tag to remote..."
+    git push origin "$version"
+    
+    print_success "Tag $version created and pushed"
+}
+
+# Upload to PyPI (optional)
+upload_to_pypi() {
+    print_info "Uploading to PyPI..."
+    
+    # Check if twine is available
+    if ! command -v twine &> /dev/null; then
+        print_warning "twine not found. Installing..."
+        pip install twine
+    fi
+    
+    # Upload using twine
+    twine upload dist/* || {
+        print_error "Failed to upload to PyPI"
+        return 1
+    }
+    
+    print_success "Successfully uploaded to PyPI"
+}
+
+# Show usage
+show_usage() {
+    echo "Usage: $0 <version> [options]"
+    echo ""
+    echo "Arguments:"
+    echo "  version         Version to release (e.g., v1.2.3 or 1.2.3)"
+    echo ""
+    echo "Options:"
+    echo "  --no-tests      Skip running tests"
+    echo "  --no-build      Skip building package"
+    echo "  --upload-pypi   Upload to PyPI after tagging"
+    echo "  --help          Show this help"
+    echo ""
+    echo "Examples:"
+    echo "  $0 v1.2.3                    # Create release v1.2.3"
+    echo "  $0 1.2.3 --upload-pypi       # Create release and upload to PyPI"
+    echo "  $0 v1.2.3-beta.1             # Create pre-release"
+    echo ""
+    echo "Suggested next version: $(suggest_next_version)"
+}
+
+# Main function
+main() {
+    if [ $# -eq 0 ]; then
+        show_usage
+        exit 1
+    fi
+    
+    local version="$1"
+    shift
+    
+    # Parse command line arguments
+    RUN_TESTS=true
+    BUILD_PACKAGE=true
+    UPLOAD_PYPI=false
+    
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            --no-tests)
+                RUN_TESTS=false
+                shift
+                ;;
+            --no-build)
+                BUILD_PACKAGE=false
+                shift
+                ;;
+            --upload-pypi)
+                UPLOAD_PYPI=true
+                shift
+                ;;
+            --help)
+                show_usage
+                exit 0
+                ;;
+            *)
+                print_error "Unknown option: $1"
+                show_usage
+                exit 1
+                ;;
+        esac
+    done
+    
+    # Add 'v' prefix if not present
+    if [[ ! "$version" =~ ^v ]]; then
+        version="v$version"
+    fi
+    
+    print_info "Starting release process for $PROJECT_NAME $version..."
+    
+    # Pre-flight checks
+    check_git_repo
+    check_working_directory
+    check_branch
+    check_remote
+    parse_version "$version"
+    check_tag_exists "$version"
+    
+    # Run tests
+    if [ "$RUN_TESTS" = true ]; then
+        run_tests
+    fi
+    
+    # Build package
+    if [ "$BUILD_PACKAGE" = true ]; then
+        build_package
+    fi
+    
+    # Create release message
+    local release_message="Release $version
+
+Generated with geminpy release script
+
+🚀 Generated with [Claude Code](https://claude.ai/code)
+
+Co-Authored-By: Claude <noreply@anthropic.com>"
+    
+    # Create and push tag
+    create_tag "$version" "$release_message"
+    
+    # Upload to PyPI if requested
+    if [ "$UPLOAD_PYPI" = true ]; then
+        upload_to_pypi
+    fi
+    
+    print_success "Release $version completed successfully!"
+    print_info "GitHub Actions will now build multiplatform binaries and create a GitHub release"
+    print_info "Check the Actions tab in your GitHub repository for progress"
+}
+
+# Run main function
+main "$@"
+</document_content>
+</document>
+
+<document index="25">
+<source>scripts/test.sh</source>
+<document_content>
+#!/usr/bin/env bash
+# this_file: scripts/test.sh
+# Test script for geminpy package
+
+set -euo pipefail
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+# Configuration
+PROJECT_NAME="geminpy"
+MIN_COVERAGE=80
+
+# Print colored output
+print_info() {
+    echo -e "${BLUE}[INFO]${NC} $1"
+}
+
+print_success() {
+    echo -e "${GREEN}[SUCCESS]${NC} $1"
+}
+
+print_warning() {
+    echo -e "${YELLOW}[WARNING]${NC} $1"
+}
+
+print_error() {
+    echo -e "${RED}[ERROR]${NC} $1"
+}
+
+# Check if uv is available
+check_uv() {
+    if ! command -v uv &> /dev/null; then
+        print_error "uv is not installed. Please install uv first:"
+        print_info "curl -LsSf https://astral.sh/uv/install.sh | sh"
+        exit 1
+    fi
+}
+
+# Run linting
+run_lint() {
+    print_info "Running linting..."
+    
+    # Create test environment if it doesn't exist
+    if [ ! -d ".venv" ]; then
+        uv venv .venv
+        source .venv/bin/activate
+        uv pip install -e ".[dev,test]" || {
+            print_warning "Failed to install with macdefaultbrowsy dependency, trying without..."
+            uv pip install pytest pytest-cov pytest-xdist pytest-asyncio mypy ruff fire playwright requests platformdirs loguru rich aiohttp
+        }
+    else
+        source .venv/bin/activate
+    fi
+    
+    # Run ruff check
+    print_info "Running ruff check..."
+    ruff check src/$PROJECT_NAME tests/ || {
+        print_error "Ruff check failed"
+        return 1
+    }
+    
+    # Run ruff format check
+    print_info "Running ruff format check..."
+    ruff format --check src/$PROJECT_NAME tests/ || {
+        print_error "Ruff format check failed"
+        return 1
+    }
+    
+    print_success "Linting passed"
+}
+
+# Run type checking
+run_type_check() {
+    print_info "Running type checking..."
+    
+    source .venv/bin/activate
+    mypy src/$PROJECT_NAME tests/ || {
+        print_error "Type checking failed"
+        return 1
+    }
+    
+    print_success "Type checking passed"
+}
+
+# Run tests
+run_tests() {
+    print_info "Running tests..."
+    
+    source .venv/bin/activate
+    
+    # Run tests with coverage
+    PYTHONPATH=src python -m pytest \
+        --cov=src/$PROJECT_NAME \
+        --cov-report=term-missing \
+        --cov-report=xml \
+        --cov-report=html \
+        --cov-fail-under=$MIN_COVERAGE \
+        -v \
+        tests/ || {
+        print_error "Tests failed"
+        return 1
+    }
+    
+    print_success "Tests passed with coverage >= $MIN_COVERAGE%"
+}
+
+# Run security checks
+run_security_check() {
+    print_info "Running security checks..."
+    
+    source .venv/bin/activate
+    
+    # Check for known vulnerabilities (if safety is available)
+    if command -v safety &> /dev/null; then
+        safety check || {
+            print_warning "Security check found vulnerabilities"
+        }
+    else
+        print_info "Safety not available, skipping security check"
+    fi
+    
+    # Use ruff's security rules (already included in our ruff config)
+    print_success "Security checks completed"
+}
+
+# Run benchmarks
+run_benchmarks() {
+    print_info "Running benchmarks..."
+    
+    source .venv/bin/activate
+    
+    # Run benchmark tests if they exist
+    if [ -f "tests/test_benchmark.py" ]; then
+        python -m pytest tests/test_benchmark.py --benchmark-only || {
+            print_warning "Benchmarks failed"
+        }
+    else
+        print_info "No benchmark tests found"
+    fi
+    
+    print_success "Benchmarks completed"
+}
+
+# Generate test report
+generate_report() {
+    print_info "Generating test report..."
+    
+    # Coverage report is already generated in run_tests
+    if [ -f "htmlcov/index.html" ]; then
+        print_success "Coverage report generated: htmlcov/index.html"
+    fi
+    
+    if [ -f "coverage.xml" ]; then
+        print_success "Coverage XML report generated: coverage.xml"
+    fi
+}
+
+# Main function
+main() {
+    print_info "Starting test suite for $PROJECT_NAME..."
+    
+    check_uv
+    
+    # Parse command line arguments
+    RUN_LINT=true
+    RUN_TYPE_CHECK=true
+    RUN_TESTS=true
+    RUN_SECURITY=false
+    RUN_BENCHMARKS=false
+    
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            --no-lint)
+                RUN_LINT=false
+                shift
+                ;;
+            --no-type-check)
+                RUN_TYPE_CHECK=false
+                shift
+                ;;
+            --no-tests)
+                RUN_TESTS=false
+                shift
+                ;;
+            --security)
+                RUN_SECURITY=true
+                shift
+                ;;
+            --benchmarks)
+                RUN_BENCHMARKS=true
+                shift
+                ;;
+            --help)
+                echo "Usage: $0 [OPTIONS]"
+                echo "Options:"
+                echo "  --no-lint       Skip linting"
+                echo "  --no-type-check Skip type checking"
+                echo "  --no-tests      Skip tests"
+                echo "  --security      Run security checks"
+                echo "  --benchmarks    Run benchmarks"
+                echo "  --help          Show this help"
+                exit 0
+                ;;
+            *)
+                print_error "Unknown option: $1"
+                exit 1
+                ;;
+        esac
+    done
+    
+    # Run checks
+    if [ "$RUN_LINT" = true ]; then
+        run_lint || exit 1
+    fi
+    
+    if [ "$RUN_TYPE_CHECK" = true ]; then
+        run_type_check || exit 1
+    fi
+    
+    if [ "$RUN_TESTS" = true ]; then
+        run_tests || exit 1
+    fi
+    
+    if [ "$RUN_SECURITY" = true ]; then
+        run_security_check
+    fi
+    
+    if [ "$RUN_BENCHMARKS" = true ]; then
+        run_benchmarks
+    fi
+    
+    generate_report
+    
+    print_success "All tests completed successfully!"
+}
+
+# Run main function
+main "$@"
+</document_content>
+</document>
+
+# File: /Users/adam/Developer/vcs/github.twardoch/pub/geminpy/src/geminpy/__init__.py
+# Language: python
+
+from geminpy.__version__ import __version__
+from geminpy.api import ask, call_gemini_cli
+
+
+# File: /Users/adam/Developer/vcs/github.twardoch/pub/geminpy/src/geminpy/__main__.py
+# Language: python
+
+import sys
+from geminpy.cli import main
+
+
+# File: /Users/adam/Developer/vcs/github.twardoch/pub/geminpy/src/geminpy/api.py
+# Language: python
+
+import asyncio
+from pathlib import Path
+from geminpy.core.config import AppConfig
+from geminpy.core.exceptions import GeminiError
+from geminpy.core.models import resolve_model_name
+from geminpy.gemini.client import GeminiClient
+from geminpy.utils.logging import setup_logging
+from geminpy.utils.platform import check_dependencies
+
+def call_gemini_cli((
+    gemini_args: list[str],
+    user: str | None = None,
+    gemini_executable: str | Path = "gemini",
+    quit_browser: bool = False,
+    verbose: bool = False,
+    retry: bool = False,
+)) -> str | None:
+    """Core function to call gemini CLI with OAuth automation."""
+
+def ask_async((
+    prompt: str,
+    user: str | None = None,
+    model: str | None = None,
+    verbose: bool = False,
+    retry: bool = False,
+)) -> str:
+    """Async version of ask."""
+
+def ask((
+    prompt: str,
+    user: str | None = None,
+    model: str | None = None,
+    verbose: bool = False,
+    retry: bool = False,
+)) -> str:
+    """Ask Gemini a question and get a clean response."""
+
+
+# File: /Users/adam/Developer/vcs/github.twardoch/pub/geminpy/src/geminpy/browser/__init__.py
+# Language: python
+
+from geminpy.browser.automation import OAuthAutomator
+from geminpy.browser.chrome import ChromeManager, ChromeTestingManager
+from geminpy.browser.manager import BrowserManager
+
+
+# File: /Users/adam/Developer/vcs/github.twardoch/pub/geminpy/src/geminpy/browser/automation.py
+# Language: python
+
+import asyncio
+import os
+import re
+import aiohttp
+from loguru import logger
+from playwright.async_api import Page, Playwright, async_playwright
+from geminpy.core.constants import CDP_VERSION_URL, SUCCESS_PATTERN
+from geminpy.core.exceptions import AuthenticationError
+
+class OAuthAutomator:
+    """Handles OAuth flow automation using Playwright."""
+    def __init__((self, debug_port: int = 9222)):
+        """Initialize with Chrome debug port."""
+    def _connect_playwright((self)) -> tuple[Playwright, Page]:
+        """Connect to Chrome via CDP and return playwright instance and OAuth page."""
+    def _wait_for_url((self, page: Page, pattern: re.Pattern, timeout: int = 120)) -> None:
+        """Wait for page URL to match pattern."""
+    def run_oauth_flow((self, user_email: str | None)) -> None:
+        """Execute the complete OAuth flow."""
+
+class UserResolver:
+    """Resolves the target user email from multiple sources."""
+
+def __init__((self, debug_port: int = 9222)):
+    """Initialize with Chrome debug port."""
+
+def _connect_playwright((self)) -> tuple[Playwright, Page]:
+    """Connect to Chrome via CDP and return playwright instance and OAuth page."""
+
+def _wait_for_url((self, page: Page, pattern: re.Pattern, timeout: int = 120)) -> None:
+    """Wait for page URL to match pattern."""
+
+def run_oauth_flow((self, user_email: str | None)) -> None:
+    """Execute the complete OAuth flow."""
+
+def resolve_user_email((cli_user: str | None = None, settings_getter=None)) -> str | None:
+    """Resolve user email from multiple sources in priority order."""
+
+
+# File: /Users/adam/Developer/vcs/github.twardoch/pub/geminpy/src/geminpy/browser/chrome.py
+# Language: python
+
+import asyncio
+import subprocess
+import time
+from pathlib import Path
+import requests
+from loguru import logger
+from geminpy.core.config import AppConfig, ChromeConfig
+from geminpy.core.constants import CDP_VERSION_URL, BrowserID
+from geminpy.core.exceptions import ChromeError, ChromeInstallationError
+from geminpy.utils.storage import SettingsManager
+from rich.console import Console
+from rich.prompt import Prompt
+from geminpy.browser.manager import BrowserManager
+
+class ChromeTestingManager:
+    """Manages Chrome for Testing installation and configuration."""
+    def __init__((self, config: AppConfig)):
+        """Initialize with app configuration."""
+    def get_stored_path((self)) -> Path | None:
+        """Get the stored Chrome for Testing executable path."""
+    def set_stored_path((self, path: Path)) -> None:
+        """Store the Chrome for Testing executable path."""
+    def get_stored_user((self)) -> str | None:
+        """Get the stored gemini CLI user email."""
+    def set_stored_user((self, user_email: str)) -> None:
+        """Store the gemini CLI user email."""
+    def _prompt_for_user_email((self)) -> None:
+        """Interactively prompt for user email during first-time setup."""
+    def install((self)) -> Path:
+        """Install Chrome for Testing and return the executable path."""
+    def ensure_available((self)) -> Path:
+        """Ensure Chrome for Testing is available and return the executable path."""
+
+class ChromeManager:
+    """Manages Chrome for Testing processes."""
+    def __init__((self, config: ChromeConfig)):
+        """Initialize with Chrome configuration."""
+    def launch((self, executable_path: Path)) -> subprocess.Popen:
+        """Launch Chrome for Testing with CDP enabled."""
+    def is_cdp_ready((self)) -> bool:
+        """Check if Chrome CDP endpoint is ready."""
+    def wait_for_cdp((self, timeout: int = 20)) -> None:
+        """Wait for Chrome's CDP to be ready."""
+
+def __init__((self, config: AppConfig)):
+    """Initialize with app configuration."""
+
+def get_stored_path((self)) -> Path | None:
+    """Get the stored Chrome for Testing executable path."""
+
+def set_stored_path((self, path: Path)) -> None:
+    """Store the Chrome for Testing executable path."""
+
+def get_stored_user((self)) -> str | None:
+    """Get the stored gemini CLI user email."""
+
+def set_stored_user((self, user_email: str)) -> None:
+    """Store the gemini CLI user email."""
+
+def _prompt_for_user_email((self)) -> None:
+    """Interactively prompt for user email during first-time setup."""
+
+def install((self)) -> Path:
+    """Install Chrome for Testing and return the executable path."""
+
+def ensure_available((self)) -> Path:
+    """Ensure Chrome for Testing is available and return the executable path."""
+
+def __init__((self, config: ChromeConfig)):
+    """Initialize with Chrome configuration."""
+
+def launch((self, executable_path: Path)) -> subprocess.Popen:
+    """Launch Chrome for Testing with CDP enabled."""
+
+def is_cdp_ready((self)) -> bool:
+    """Check if Chrome CDP endpoint is ready."""
+
+def wait_for_cdp((self, timeout: int = 20)) -> None:
+    """Wait for Chrome's CDP to be ready."""
+
+
+# File: /Users/adam/Developer/vcs/github.twardoch/pub/geminpy/src/geminpy/browser/manager.py
+# Language: python
+
+import sys
+from loguru import logger
+from macdefaultbrowsy import (
+        get_browsers,
+        get_default_browser,
+        set_default_browser,
+    )
+
+class BrowserManager:
+    """Manages default browser settings on macOS."""
+
+def get_default_browser(()):
+
+def get_browsers(()):
+
+def set_default_browser((browser_id: str)):
+
+def get_current_default((cls)) -> str | None:
+    """Get current default browser identifier."""
+
+def get_available_browsers((cls)) -> list[str]:
+    """List all available browser identifiers."""
+
+def set_default((cls, browser_id: str)) -> bool:
+    """Set the default browser with hanging prevention."""
+
+def list_browsers((cls)) -> None:
+    """List all available browsers, marking the default with a *."""
+
+
+# File: /Users/adam/Developer/vcs/github.twardoch/pub/geminpy/src/geminpy/cli.py
+# Language: python
+
+import asyncio
+from pathlib import Path
+import fire
+from rich.console import Console
+from geminpy.api import call_gemini_cli
+from geminpy.core.models import MODEL_SHORTCUTS
+
+def cli((
+    quit_browser: bool = False,
+    verbose: bool = False,
+    retry: bool = False,
+    user: str | None = None,
+    gemini_executable: str | Path = "gemini",
+    P: bool = False,
+    Pro: bool = False,
+    F: bool = False,
+    Flash: bool = False,
+    **gemini_args,
+)) -> None:
+    """CLI interface for gemini with automated OAuth via Playwright."""
+
+def main(()):
+    """Main entry point for the CLI."""
+
+
+# File: /Users/adam/Developer/vcs/github.twardoch/pub/geminpy/src/geminpy/core/__init__.py
+# Language: python
+
+from geminpy.core.config import AppConfig, ChromeConfig, GeminiConfig
+from geminpy.core.constants import AuthStatus, BrowserID, RateLimitIndicators
+from geminpy.core.exceptions import (
+    AuthenticationError,
+    BrowserManagementError,
+    ChromeError,
+    ChromeInstallationError,
+    GeminiError,
+    PlatformError,
+    RateLimitError,
+)
+
+
+# File: /Users/adam/Developer/vcs/github.twardoch/pub/geminpy/src/geminpy/core/config.py
+# Language: python
+
+from dataclasses import dataclass, field
+from pathlib import Path
+from platformdirs import user_data_dir
+
+class ChromeConfig:
+    """Chrome for Testing configuration."""
+
+class GeminiConfig:
+    """Gemini CLI configuration."""
+
+class AppConfig:
+    """Main application configuration."""
+
+def settings_dir((self)) -> Path:
+    """Get the settings directory path."""
+
+
+# File: /Users/adam/Developer/vcs/github.twardoch/pub/geminpy/src/geminpy/core/constants.py
+# Language: python
+
+from enum import Enum
+
+class AuthStatus(E, n, u, m):
+    """OAuth authentication status."""
+
+class RateLimitIndicators:
+    """Patterns indicating rate limit errors."""
+
+class BrowserID:
+    """Browser identifiers."""
+
+
+# File: /Users/adam/Developer/vcs/github.twardoch/pub/geminpy/src/geminpy/core/exceptions.py
+# Language: python
+
+class GeminiError(E, x, c, e, p, t, i, o, n):
+    """Base exception for all Geminpy errors."""
+
+class ChromeError(G, e, m, i, n, i, E, r, r, o, r):
+    """Chrome-related errors."""
+
+class BrowserManagementError(C, h, r, o, m, e, E, r, r, o, r):
+    """Browser switching/management errors."""
+
+class ChromeInstallationError(C, h, r, o, m, e, E, r, r, o, r):
+    """Chrome for Testing installation errors."""
+
+class AuthenticationError(G, e, m, i, n, i, E, r, r, o, r):
+    """OAuth authentication errors."""
+
+class RateLimitError(G, e, m, i, n, i, E, r, r, o, r):
+    """API rate limit errors."""
+
+class PlatformError(G, e, m, i, n, i, E, r, r, o, r):
+    """Platform compatibility errors."""
+
+
+# File: /Users/adam/Developer/vcs/github.twardoch/pub/geminpy/src/geminpy/core/models.py
+# Language: python
+
+import re
+import subprocess
+from pathlib import Path
+from typing import Any
+from loguru import logger
+
+def _get_npm_global_root(()) -> Path | None:
+    """Get the npm global root directory cross-platform."""
+
+def _parse_gemini_models(()) -> dict[str, str]:
+    """Parse model constants from Gemini CLI's models.js file."""
+
+def get_model_shortcuts(()) -> dict[str, str]:
+    """Get model shortcuts, parsing from Gemini CLI on first call."""
+
+def __getattr__((name: str)) -> Any:
+    """Lazy loading for MODEL_SHORTCUTS."""
+
+def resolve_model_name((model: str | None)) -> str | None:
+    """Resolve model name from shortcuts or pass through."""
+
+
+# File: /Users/adam/Developer/vcs/github.twardoch/pub/geminpy/src/geminpy/gemini/__init__.py
+# Language: python
+
+from geminpy.gemini.client import GeminiClient
+from geminpy.gemini.executor import GeminiExecutor
+from geminpy.gemini.parser import ResponseParser
+
+
+# File: /Users/adam/Developer/vcs/github.twardoch/pub/geminpy/src/geminpy/gemini/client.py
+# Language: python
+
+import asyncio
+import subprocess
+from loguru import logger
+from geminpy.browser.automation import OAuthAutomator, UserResolver
+from geminpy.browser.chrome import ChromeManager, ChromeTestingManager
+from geminpy.browser.manager import BrowserManager
+from geminpy.core.config import AppConfig
+from geminpy.core.constants import BrowserID
+from geminpy.core.exceptions import RateLimitError
+from geminpy.gemini.executor import GeminiExecutor
+from geminpy.gemini.parser import ResponseParser
+
+class GeminiClient:
+    """Main orchestrator for Gemini CLI automation."""
+    def __init__((self, config: AppConfig)):
+        """Initialize with app configuration."""
+    def execute_with_auth((self, args: list[str], user_email: str | None = None)) -> str | None:
+        """Execute Gemini CLI with automatic OAuth handling."""
+    def _try_gemini_with_oauth((self, args: list[str], user_email: str | None)) -> str | None:
+        """Try running gemini with OAuth automation."""
+
+def __init__((self, config: AppConfig)):
+    """Initialize with app configuration."""
+
+def execute_with_auth((self, args: list[str], user_email: str | None = None)) -> str | None:
+    """Execute Gemini CLI with automatic OAuth handling."""
+
+def _try_gemini_with_oauth((self, args: list[str], user_email: str | None)) -> str | None:
+    """Try running gemini with OAuth automation."""
+
+
+# File: /Users/adam/Developer/vcs/github.twardoch/pub/geminpy/src/geminpy/gemini/executor.py
+# Language: python
+
+import asyncio
+import subprocess
+from pathlib import Path
+from loguru import logger
+from geminpy.core.constants import RateLimitIndicators
+import select
+
+class GeminiExecutor:
+    """Manages Gemini CLI subprocess execution."""
+    def __init__((self, executable: str | Path = "gemini")):
+        """Initialize with Gemini executable path."""
+    def execute((self, args: list[str], timeout: int = 120, interactive: bool = False)) -> tuple[int, str, str]:
+        """Execute gemini CLI and return (returncode, stdout, stderr)."""
+    def check_rate_limit((self, text: str)) -> bool:
+        """Check if text contains rate limit indicators."""
+    def monitor_process((self, proc: subprocess.Popen, monitor_time: int = 15)) -> tuple[bool, list[str]]:
+        """Monitor process for rate limits and collect stderr."""
+    def wait_completion((self, proc: subprocess.Popen, timeout: int = 90)) -> tuple[str, str]:
+        """Wait for process completion and return stdout, stderr."""
+
+def __init__((self, executable: str | Path = "gemini")):
+    """Initialize with Gemini executable path."""
+
+def execute((self, args: list[str], timeout: int = 120, interactive: bool = False)) -> tuple[int, str, str]:
+    """Execute gemini CLI and return (returncode, stdout, stderr)."""
+
+def check_rate_limit((self, text: str)) -> bool:
+    """Check if text contains rate limit indicators."""
+
+def monitor_process((self, proc: subprocess.Popen, monitor_time: int = 15)) -> tuple[bool, list[str]]:
+    """Monitor process for rate limits and collect stderr."""
+
+def wait_completion((self, proc: subprocess.Popen, timeout: int = 90)) -> tuple[str, str]:
+    """Wait for process completion and return stdout, stderr."""
+
+
+# File: /Users/adam/Developer/vcs/github.twardoch/pub/geminpy/src/geminpy/gemini/parser.py
+# Language: python
+
+from loguru import logger
+
+class ResponseParser:
+    """Parses and cleans Gemini CLI output."""
+    def extract_clean_response((self, stdout: str)) -> str | None:
+        """Extract clean model response from mixed output."""
+
+def extract_clean_response((self, stdout: str)) -> str | None:
+    """Extract clean model response from mixed output."""
+
+
+# File: /Users/adam/Developer/vcs/github.twardoch/pub/geminpy/src/geminpy/geminpy.py
+# Language: python
+
+import logging
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Union
+
+class Config:
+    """Configuration settings for geminpy."""
+
+def process_data((data: list[Any], config: Config | None = None, *, debug: bool = False)) -> dict[str, Any]:
+    """Process the input data according to configuration."""
+
+def main(()) -> None:
+    """Main entry point for geminpy."""
+
+
+# File: /Users/adam/Developer/vcs/github.twardoch/pub/geminpy/src/geminpy/utils/__init__.py
+# Language: python
+
+from geminpy.utils.logging import setup_logging
+from geminpy.utils.platform import check_dependencies, require_command, require_macos
+from geminpy.utils.storage import SettingsManager
+
+
+# File: /Users/adam/Developer/vcs/github.twardoch/pub/geminpy/src/geminpy/utils/logging.py
+# Language: python
+
+import sys
+from loguru import logger
+
+def setup_logging((verbose: bool = False)) -> None:
+    """Configure loguru logging based on verbose flag."""
+
+
+# File: /Users/adam/Developer/vcs/github.twardoch/pub/geminpy/src/geminpy/utils/platform.py
+# Language: python
+
+import platform
+import subprocess
+from geminpy.core.exceptions import PlatformError
+
+def require_macos(()) -> None:
+    """Ensure running on macOS."""
+
+def require_command((command: str, install_hint: str)) -> None:
+    """Check if command exists, raise with install hint if not."""
+
+def check_dependencies(()) -> None:
+    """Verify all required dependencies are available."""
+
+
+# File: /Users/adam/Developer/vcs/github.twardoch/pub/geminpy/src/geminpy/utils/storage.py
+# Language: python
+
+import json
+from pathlib import Path
+from loguru import logger
+
+class SettingsManager:
+    """Manages persistent settings storage."""
+    def __init__((self, settings_dir: Path)):
+        """Initialize settings manager with directory path."""
+    def _load_settings((self)) -> dict:
+        """Load settings from disk."""
+    def _save_settings((self, settings: dict)) -> None:
+        """Save settings to disk."""
+    def get((self, key: str, default: str | None = None)) -> str | None:
+        """Get a setting value."""
+    def set((self, key: str, value: str)) -> None:
+        """Set a setting value."""
+    def delete((self, key: str)) -> None:
+        """Delete a setting."""
+
+def __init__((self, settings_dir: Path)):
+    """Initialize settings manager with directory path."""
+
+def _load_settings((self)) -> dict:
+    """Load settings from disk."""
+
+def _save_settings((self, settings: dict)) -> None:
+    """Save settings to disk."""
+
+def get((self, key: str, default: str | None = None)) -> str | None:
+    """Get a setting value."""
+
+def set((self, key: str, value: str)) -> None:
+    """Set a setting value."""
+
+def delete((self, key: str)) -> None:
+    """Delete a setting."""
+
+
+# File: /Users/adam/Developer/vcs/github.twardoch/pub/geminpy/tests/conftest.py
+# Language: python
+
+
+
+# File: /Users/adam/Developer/vcs/github.twardoch/pub/geminpy/tests/test_api.py
+# Language: python
+
+from geminpy.api import ask
+
+def test_ask_importable(()):
+    """Verify that the ask function can be imported."""
+
+
+# File: /Users/adam/Developer/vcs/github.twardoch/pub/geminpy/tests/test_browser/test_automation.py
+# Language: python
+
+import os
+from unittest.mock import AsyncMock, patch
+import pytest
+from geminpy.browser.automation import OAuthAutomator, UserResolver
+from geminpy.core.exceptions import AuthenticationError
+
+class TestUserResolver:
+    """Tests for the UserResolver class."""
+    def test_resolve_user_email_cli_priority((self)):
+        """Verify CLI argument has highest priority."""
+    def test_resolve_user_email_settings_priority((self)):
+        """Verify stored settings have third priority."""
+    def test_resolve_user_email_none_fallback((self)):
+        """Verify fallback to None when no user configured."""
+
+class TestOAuthAutomator:
+    """Tests for the OAuthAutomator class."""
+    def test_oauth_automator_init((self)):
+        """Verify OAuthAutomator initializes with correct debug port."""
+    def test_oauth_automator_default_port((self)):
+        """Verify OAuthAutomator uses default port 9222."""
+
+def test_resolve_user_email_cli_priority((self)):
+    """Verify CLI argument has highest priority."""
+
+def test_resolve_user_email_env_priority((self)):
+    """Verify environment variable has second priority."""
+
+def test_resolve_user_email_settings_priority((self)):
+    """Verify stored settings have third priority."""
+
+def mock_getter(()):
+
+def test_resolve_user_email_none_fallback((self)):
+    """Verify fallback to None when no user configured."""
+
+def test_oauth_automator_init((self)):
+    """Verify OAuthAutomator initializes with correct debug port."""
+
+def test_oauth_automator_default_port((self)):
+    """Verify OAuthAutomator uses default port 9222."""
+
+def test_connect_playwright_success((self, mock_playwright, mock_session_class)):
+    """Test successful Playwright connection to Chrome."""
+
+def test_connect_playwright_no_oauth_page((self, mock_playwright, mock_session_class, mock_sleep)):
+    """Test failure when no OAuth page is found."""
+
+
+# File: /Users/adam/Developer/vcs/github.twardoch/pub/geminpy/tests/test_browser/test_chrome.py
+# Language: python
+
+from pathlib import Path
+from unittest.mock import MagicMock, patch
+import pytest
+import requests
+from geminpy.browser.chrome import ChromeManager, ChromeTestingManager
+from geminpy.core.config import AppConfig, ChromeConfig
+
+def app_config((tmp_path)):
+    """Pytest fixture for a mock AppConfig."""
+
+def chrome_testing_manager((app_config)):
+    """Pytest fixture for a ChromeTestingManager instance."""
+
+def chrome_manager(()):
+    """Pytest fixture for a ChromeManager instance."""
+
+def test_chrome_testing_manager_get_stored_path((chrome_testing_manager)):
+    """Verify that the manager can retrieve a stored path."""
+
+def test_ensure_available_with_stored_path((mock_exists, chrome_testing_manager)):
+    """Verify that ensure_available returns a stored path if it exists."""
+
+def test_ensure_available_installs_if_needed((mock_browsers, mock_run, chrome_testing_manager, tmp_path)):
+    """Verify that ensure_available installs Chrome if it's not found."""
+
+def test_chrome_manager_launch((mock_popen, chrome_manager, tmp_path)):
+    """Verify that ChromeManager launches Chrome with the correct arguments."""
+
+def test_chrome_manager_is_cdp_ready((mock_get, chrome_manager)):
+    """Verify that is_cdp_ready correctly checks the CDP endpoint."""
+
+def test_chrome_manager_wait_for_cdp((mock_sleep, mock_get, chrome_manager)):
+    """Verify that wait_for_cdp waits for a successful connection."""
+
+
+# File: /Users/adam/Developer/vcs/github.twardoch/pub/geminpy/tests/test_browser/test_manager.py
+# Language: python
+
+from unittest.mock import MagicMock, patch
+from geminpy.browser.manager import BrowserManager
+
+def test_get_current_default((mock_get_default_browser)):
+    """Verify that get_current_default correctly returns the default browser."""
+
+def test_get_current_default_error((mock_get_default_browser)):
+    """Verify that get_current_default handles errors gracefully."""
+
+def test_get_available_browsers((mock_get_browsers)):
+    """Verify that get_available_browsers correctly returns the browser list."""
+
+def test_set_default_success((mock_set_default_browser, mock_get_default_browser)):
+    """Verify that set_default calls macdefaultbrowsy with the correct arguments."""
+
+def test_set_default_already_default((mock_set_default_browser, mock_get_default_browser)):
+    """Verify that set_default returns True without setting if browser is already default."""
+
+def test_list_browsers((mock_get_default_browser, mock_get_browsers)):
+    """Verify that list_browsers displays browsers with current marked."""
+
+
+# File: /Users/adam/Developer/vcs/github.twardoch/pub/geminpy/tests/test_cli.py
+# Language: python
+
+import asyncio
+from unittest.mock import AsyncMock, MagicMock, patch
+import pytest
+from geminpy.cli import cli, main
+
+class TestCLI:
+    """Test the CLI interface."""
+
+def test_basic_prompt((self, mock_call_gemini, mock_asyncio_run)):
+    """Test basic command execution with prompt."""
+
+def test_model_shortcut_pro((self, mock_call_gemini, mock_asyncio_run)):
+    """Test -P shortcut for pro model."""
+
+def test_model_shortcut_flash((self, mock_call_gemini, mock_asyncio_run)):
+    """Test -F shortcut for flash model."""
+
+def test_interactive_mode((self, mock_call_gemini, mock_asyncio_run)):
+    """Test interactive mode (no prompt)."""
+
+def test_error_handling((self, mock_console, mock_call_gemini, mock_asyncio_run)):
+    """Test error handling when gemini fails."""
+
+def test_verbose_flag((self, mock_call_gemini, mock_asyncio_run)):
+    """Test verbose flag propagation."""
+
+def test_user_email_specification((self, mock_call_gemini, mock_asyncio_run)):
+    """Test user email specification."""
+
+def test_quit_browser_option((self, mock_call_gemini, mock_asyncio_run)):
+    """Test quit browser option."""
+
+def test_model_shortcut_warning((self, mock_console, mock_call_gemini, mock_asyncio_run)):
+    """Test warning when model shortcuts override existing model arg."""
+
+def test_complex_gemini_args((self, mock_call_gemini, mock_asyncio_run)):
+    """Test passing complex arguments to gemini."""
+
+def test_main_entry_point((self, mock_fire)):
+    """Test the main entry point."""
+
+
+# File: /Users/adam/Developer/vcs/github.twardoch/pub/geminpy/tests/test_core/test_models.py
+# Language: python
+
+from pathlib import Path
+from unittest.mock import MagicMock, patch
+from geminpy.core.models import (
+    _FALLBACK_MODELS,
+    _get_npm_global_root,
+    _parse_gemini_models,
+    resolve_model_name,
+)
+
+class TestModelResolution:
+    """Test model name resolution functionality."""
+    def test_resolve_pro_shortcut((self)):
+        """Test that 'pro' resolves to a gemini pro model."""
+    def test_resolve_flash_shortcut((self)):
+        """Test that 'flash' resolves to a gemini flash model."""
+    def test_resolve_case_insensitive((self)):
+        """Test that shortcuts are case-insensitive."""
+    def test_passthrough_other_models((self)):
+        """Test that non-shortcut model names pass through unchanged."""
+    def test_resolve_none((self)):
+        """Test that None returns None."""
+
+class TestNpmGlobalRoot:
+    """Test npm global root resolution."""
+
+class TestParseGeminiModels:
+    """Test parsing models from Gemini CLI."""
+
+def test_resolve_pro_shortcut((self)):
+    """Test that 'pro' resolves to a gemini pro model."""
+
+def test_resolve_flash_shortcut((self)):
+    """Test that 'flash' resolves to a gemini flash model."""
+
+def test_resolve_case_insensitive((self)):
+    """Test that shortcuts are case-insensitive."""
+
+def test_passthrough_other_models((self)):
+    """Test that non-shortcut model names pass through unchanged."""
+
+def test_resolve_none((self)):
+    """Test that None returns None."""
+
+def test_get_npm_global_root_success((self, mock_run)):
+    """Test successful npm root resolution."""
+
+def test_get_npm_global_root_failure((self, mock_run)):
+    """Test npm root resolution when npm is not available."""
+
+def test_parse_models_no_npm_root((self, mock_get_root)):
+    """Test parsing when npm root is not found."""
+
+def test_parse_models_file_not_found((self, mock_exists, mock_get_root)):
+    """Test parsing when models.js file doesn't exist."""
+
+def test_parse_models_success((self, mock_read_text, mock_exists, mock_get_root)):
+    """Test successful parsing of models.js."""
+
+def test_parse_models_partial_success((self, mock_read_text, mock_exists, mock_get_root)):
+    """Test parsing when only some models are found."""
+
+
+# File: /Users/adam/Developer/vcs/github.twardoch/pub/geminpy/tests/test_gemini/test_client.py
+# Language: python
+
+
+
+# File: /Users/adam/Developer/vcs/github.twardoch/pub/geminpy/tests/test_gemini/test_executor.py
+# Language: python
+
+import subprocess
+from unittest.mock import AsyncMock, MagicMock, patch
+import pytest
+from geminpy.gemini.executor import GeminiExecutor
+
+class TestGeminiExecutor:
+    """Tests for the GeminiExecutor class."""
+    def test_executor_init_default((self)):
+        """Verify executor initializes with default gemini executable."""
+    def test_executor_init_custom((self)):
+        """Verify executor initializes with custom executable."""
+    def test_check_rate_limit_detection((self)):
+        """Test rate limit detection in text."""
+
+def test_executor_init_default((self)):
+    """Verify executor initializes with default gemini executable."""
+
+def test_executor_init_custom((self)):
+    """Verify executor initializes with custom executable."""
+
+def test_execute_basic((self, mock_sleep, mock_popen)):
+    """Test basic execute method returns process."""
+
+def test_execute_with_existing_yes_flag((self, mock_sleep, mock_popen)):
+    """Test that -y flag is not duplicated if already present."""
+
+def test_execute_with_yes_flag((self, mock_sleep, mock_popen)):
+    """Test that --yes flag prevents adding -y."""
+
+def test_check_rate_limit_detection((self)):
+    """Test rate limit detection in text."""
+
+def test_monitor_process_rate_limit_detected((self, mock_sleep, mock_select, mock_loop)):
+    """Test monitoring process that detects rate limit."""
+
+def test_monitor_process_no_rate_limit((self, mock_sleep, mock_select, mock_loop)):
+    """Test monitoring process that completes normally."""
+
+def test_wait_completion_success((self)):
+    """Test successful process completion."""
+
+def test_wait_completion_timeout((self)):
+    """Test process timeout handling."""
+
+
+# File: /Users/adam/Developer/vcs/github.twardoch/pub/geminpy/tests/test_gemini/test_parser.py
+# Language: python
+
+from geminpy.gemini.parser import ResponseParser
+
+class TestResponseParser:
+    """Tests for the ResponseParser class."""
+    def test_extract_clean_response_with_auth_noise((self)):
+        """Verify that auth-related lines are filtered out."""
+    def test_extract_clean_response_no_auth_noise((self)):
+        """Verify that clean output without auth noise is returned as-is."""
+    def test_extract_clean_response_empty_input((self)):
+        """Verify that empty input returns None."""
+    def test_extract_clean_response_only_auth_noise((self)):
+        """Verify that input with only auth noise returns None."""
+    def test_extract_clean_response_mixed_content((self)):
+        """Verify that mixed content with auth noise in between is handled correctly."""
+    def test_extract_clean_response_with_whitespace((self)):
+        """Verify that leading/trailing whitespace is handled correctly."""
+
+def test_extract_clean_response_with_auth_noise((self)):
+    """Verify that auth-related lines are filtered out."""
+
+def test_extract_clean_response_no_auth_noise((self)):
+    """Verify that clean output without auth noise is returned as-is."""
+
+def test_extract_clean_response_empty_input((self)):
+    """Verify that empty input returns None."""
+
+def test_extract_clean_response_only_auth_noise((self)):
+    """Verify that input with only auth noise returns None."""
+
+def test_extract_clean_response_mixed_content((self)):
+    """Verify that mixed content with auth noise in between is handled correctly."""
+
+def test_extract_clean_response_with_whitespace((self)):
+    """Verify that leading/trailing whitespace is handled correctly."""
+
+
+# File: /Users/adam/Developer/vcs/github.twardoch/pub/geminpy/tests/test_package.py
+# Language: python
+
+import geminpy
+
+def test_version(()):
+    """Verify package exposes version."""
+
+
+# File: /Users/adam/Developer/vcs/github.twardoch/pub/geminpy/tests/test_utils/test_platform.py
+# Language: python
+
+import subprocess
+from unittest.mock import patch
+import pytest
+from geminpy.core.exceptions import PlatformError
+from geminpy.utils.platform import (
+    check_dependencies,
+    require_command,
+    require_macos,
+)
+
+def test_require_macos_on_mac(()):
+    """Verify that require_macos does not raise on macOS."""
+
+def test_require_macos_on_other_os(()):
+    """Verify that require_macos raises PlatformError on other OS."""
+
+def test_require_command_exists(()):
+    """Verify that require_command does not raise if command exists."""
+
+def test_require_command_does_not_exist(()):
+    """Verify that require_command raises PlatformError if command is missing."""
+
+def test_check_dependencies_success(()):
+    """Verify check_dependencies runs without error when all dependencies are met."""
+
+def test_check_dependencies_missing_command(()):
+    """Verify check_dependencies raises PlatformError if a command is missing."""
+
+
+# File: /Users/adam/Developer/vcs/github.twardoch/pub/geminpy/tests/test_utils/test_storage.py
+# Language: python
+
+from geminpy.utils.storage import SettingsManager
+
+def test_settings_manager_set_get((tmp_path)):
+    """Verify that SettingsManager can set and get a setting."""
+
+
+</documents>

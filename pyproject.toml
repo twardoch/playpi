@@ -11,28 +11,37 @@
 #------------------------------------------------------------------------------
 [project]
 name = 'playpi' # Package name on PyPI
-description = '' # Short description
+description = 'Automate AI chat workflows through browser automation' # Short description
 readme = 'README.md' # Path to README file
-requires-python = '>=3.10' # Minimum Python version
+requires-python = '>=3.11' # Minimum Python version
 keywords = [
+    "playwright", "automation", "ai", "chat", "gemini", "browser"
 ] # Keywords for PyPI search
 dynamic = ["version"] # Fields set dynamically at build time
 
 # PyPI classifiers for package categorization
 classifiers = [
-    'Development Status :: 4 - Beta', # Package maturity level
+    'Development Status :: 3 - Alpha', # Package maturity level
     'Programming Language :: Python',
-    'Programming Language :: Python :: 3.10',
     'Programming Language :: Python :: 3.11',
     'Programming Language :: Python :: 3.12',
     'Programming Language :: Python :: Implementation :: CPython',
-    'Programming Language :: Python :: Implementation :: PyPy',
     'Operating System :: OS Independent',
     'License :: OSI Approved :: MIT License',
     'Intended Audience :: Developers',
+    'Topic :: Internet :: WWW/HTTP :: Browsers',
+    'Topic :: Software Development :: Libraries :: Python Modules',
+    'Topic :: Scientific/Engineering :: Artificial Intelligence',
 ]
 
 dependencies = [
+    "playwright>=1.40.0",
+    "pydantic>=2.0.0",
+    "rich>=13.0.0",
+    "fire>=0.5.0",
+    "loguru>=0.7.0",
+    "html2text>=2020.1.16",
+    "platformdirs>=3.0.0",
 ]
 
 # Author information
@@ -73,6 +82,7 @@ test = [
     'pytest-xdist>=3.6.1', # Parallel test execution - Keep pytest-xdist as is, update if newer pytest-xdist version is required
     'pytest-benchmark[histogram]>=5.1.0', # Benchmarking plugin - Keep pytest-benchmark as is, update if newer pytest-benchmark version is required
     'pytest-asyncio>=0.25.3', # Async test support - Keep pytest-asyncio as is, update if newer pytest-asyncio version is required
+    'pytest-playwright>=0.4.0', # Playwright testing support
     'coverage[toml]>=7.6.12',
 ]
 
@@ -92,7 +102,7 @@ all = [
 # Entry points for command-line executables installed with the package.
 #------------------------------------------------------------------------------
 [project.scripts]
-# CLINAME = "playpi.__main__:main"
+playpi = "playpi.cli:main"
 
 #------------------------------------------------------------------------------
 # BUILD SYSTEM CONFIGURATION
@@ -413,8 +423,8 @@ unfixable = [
     'F401', # Don't automatically remove unused imports - may be needed later
 
 ]
-# Configure extend-exclude to ignore specific directories
-extend-exclude = [".git", ".venv", "venv", "dist", "build"]
+# Configure exclude to ignore specific directories
+exclude = [".git", ".venv", "venv", "dist", "build"]
 
 # isort configuration within Ruff
 [tool.ruff.lint.isort]
@@ -432,4 +442,12 @@ ban-relative-imports = 'all' # Ban all relative imports for consistency
     'S101', # Allow assertions in tests
     'TID252'
     # Allow relative imports in tests for convenience
+]
+
+[dependency-groups]
+test = [
+    "pytest>=8.4.2",
+    "pytest-asyncio>=1.2.0",
+    "pytest-cov>=7.0.0",
+    "pytest-playwright>=0.7.1",
 ]

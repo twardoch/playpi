@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+
+cerebrate-file -i 02ana/ -r "*.*" -p "Explain and describe this file precisely. Explain what it does, how it does it, why it is useful and why it works this way. Then analyze it from the point of view of our objective which is to create a modular python package 'playpi' which uses 'playwrightauthor' to automate the browser to perform various actions, and wraps these actions into simple accessible functions. For example opening a particular LLM chat window, sending a prompt (given as the argument) to a model, retrieving the result, and returning the result. Explain how this file can be useful in this objective, what we could re-use and how we should adapt it."
