@@ -65,7 +65,7 @@ Before using Google Deep Research, you need to:
 
 ### System Requirements
 
-- Python 3.11+
+- Python 3.12+
 - Chromium browser (installed automatically)
 - 2GB+ RAM for browser automation
 - Internet connection
