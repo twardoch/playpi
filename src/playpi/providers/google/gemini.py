@@ -16,6 +16,15 @@ from playpi.html import extract_research_content, html_to_markdown
 from playpi.providers.google.auth import ensure_authenticated
 from playpi.session import create_session
 
+
+def _configure_logging(verbose: bool = False) -> None:
+    """Configure logging based on verbose flag."""
+    logger.remove()  # Remove all existing handlers
+    if verbose:
+        logger.add(sys.stdout, level="DEBUG")
+    # If not verbose, no handlers are added, so logging is suppressed
+
+
 RESEARCH_CONTENT_MIN_LENGTH = 50_000
 
 
@@ -45,9 +54,7 @@ async def google_gemini_deep_research(
         PlayPiTimeoutError: If research exceeds timeout
         ProviderError: If UI elements not found
     """
-    if verbose:
-        logger.remove()
-        logger.add(sys.stdout, level="DEBUG")
+    _configure_logging(verbose)
 
     logger.info(f"Starting Google Deep Research for: {prompt[:50]}...")
 
@@ -182,9 +189,8 @@ async def _google_gemini_deep_research_on_page(page: Page, prompt: str, **kwargs
 
 async def google_gemini_generate_image(prompt: str, **kwargs):
     """Generate an image using Google Gemini."""
-    if kwargs.get("verbose", False):
-        logger.remove()
-        logger.add(sys.stdout, level="DEBUG")
+    verbose = kwargs.get("verbose", False)
+    _configure_logging(verbose)
 
     logger.info(f"Starting Google Gemini Image Generation for: {prompt[:50]}...")
 
@@ -311,9 +317,8 @@ async def _download_generated_image(page: Page, download_path: str) -> str:
 
 async def google_gemini_ask_deep_think(prompt: str, **kwargs):
     """Perform a deep think using Google Gemini."""
-    if kwargs.get("verbose", False):
-        logger.remove()
-        logger.add(sys.stdout, level="DEBUG")
+    verbose = kwargs.get("verbose", False)
+    _configure_logging(verbose)
 
     logger.info(f"Starting Google Gemini Deep Think for: {prompt[:50]}...")
 
@@ -398,9 +403,8 @@ async def _activate_deep_think(page: Page) -> None:
 
 async def google_gemini_ask(prompt: str, **kwargs):
     """Ask a simple question to Google Gemini."""
-    if kwargs.get("verbose", False):
-        logger.remove()
-        logger.add(sys.stdout, level="DEBUG")
+    verbose = kwargs.get("verbose", False)
+    _configure_logging(verbose)
 
     logger.info(f"Asking Gemini: {prompt[:50]}...")
 
@@ -911,21 +915,64 @@ async def _handle_confirmation_dialog(page: Page, timeout: int) -> None:
 
 
 async def _wait_for_sources_button(page: Page, timeout: int) -> None:
-    """Wait for the standard response by ensuring the Sources button appears."""
-    logger.info(f"⏱️ Waiting for Sources button (timeout: {timeout}s)...")
-    try:
-        sources_button = page.get_by_role("button", name="Sources")
-        await sources_button.wait_for(state="visible", timeout=timeout * 1000)
-        logger.info("📚 Sources button detected; response ready.")
-    except PlaywrightTimeoutError:
-        logger.info("⏳ Sources button not detected within timeout; continuing with content fallback.")
+    """Wait for response completion using multiple indicators."""
+    logger.info(f"⏱️ Waiting for response completion (timeout: {timeout}s)...")
+
+    # Multiple completion indicators to check
+    completion_selectors = [
+        "button[data-testid='sources-button']:visible",  # Sources button when available
+        "button:has-text('Sources'):visible",  # Sources button alternative
+        ".response-footer.complete",  # Complete class indicator
+        ".message-actions button:visible",  # Action buttons (copy, etc.)
+        "[data-testid='copy-button']:visible",  # Copy button
+    ]
+
+    start_time = asyncio.get_running_loop().time()
+    check_interval = 0.5  # Check every 500ms
+
+    while (asyncio.get_running_loop().time() - start_time) < timeout:
         try:
-            content_length = len(await page.content())
-            logger.debug(f"📏 Page content length after timeout: {content_length}")
-        except Exception as exc:  # pragma: no cover - diagnostic logging only
-            logger.debug(f"Unable to inspect page content after Sources timeout: {exc}")
-    except Exception as exc:  # pragma: no cover - defensive guard
-        logger.warning(f"Failed while waiting for Sources button: {exc}; continuing")
+            # Check for any completion indicator
+            for selector in completion_selectors:
+                try:
+                    element = page.locator(selector).first
+                    if await element.count() > 0:
+                        indicator_type = "Sources button" if "sources" in selector.lower() else "completion indicator"
+                        logger.info(f"📚 {indicator_type} detected; response ready.")
+                        return
+                except Exception:
+                    continue  # Try next selector
+
+            # Also check if we have substantive content in message-content
+            try:
+                content_elements = page.locator("message-content")
+                if await content_elements.count() > 0:
+                    # Check if the content has meaningful text (not just loading indicators)
+                    content_text = await content_elements.first.text_content()
+                    if content_text and len(content_text.strip()) > 50:  # Arbitrary threshold
+                        # Wait a bit more to ensure content is fully loaded
+                        await asyncio.sleep(2)
+                        # Check again if it's stable
+                        new_content = await content_elements.first.text_content()
+                        if new_content == content_text:
+                            logger.info("📄 Response content appears complete.")
+                            return
+            except Exception:
+                pass  # Continue checking other indicators
+
+            await asyncio.sleep(check_interval)
+
+        except Exception as exc:
+            logger.debug(f"Error during completion check: {exc}")
+            await asyncio.sleep(check_interval)
+
+    # Timeout reached
+    logger.info("⏳ Completion indicators not detected within timeout; proceeding with extraction.")
+    try:
+        content_length = len(await page.content())
+        logger.debug(f"📏 Page content length after timeout: {content_length}")
+    except Exception as exc:  # pragma: no cover - diagnostic logging only
+        logger.debug(f"Unable to inspect page content after timeout: {exc}")
 
 
 async def _wait_for_completion(page: Page, timeout: int) -> None:

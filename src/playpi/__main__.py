@@ -51,6 +51,7 @@ def gemi(
     prompt: str | None = None,
     deep: bool = False,
     output_file: str | None = None,
+    verbose: bool = False,
 ) -> None:
     """Run a Gemini prompt, optionally with Deep Think."""
     result = _run_command(
@@ -59,6 +60,7 @@ def gemi(
             prompt=prompt,
             deep=deep,
             output_file=output_file,
+            verbose=verbose,
         )
     )
     message = None

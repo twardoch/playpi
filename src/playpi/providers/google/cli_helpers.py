@@ -51,6 +51,7 @@ async def gemi_command(
     prompt: str | None = None,
     deep: bool = False,
     output_file: str | None = None,
+    verbose: bool = False,
 ) -> str | Path:
     """Execute a Gemini prompt, optionally in Deep Think mode."""
     parts: list[str] = []
@@ -65,7 +66,7 @@ async def gemi_command(
 
     full_prompt = "\n".join(part for part in parts if part)
     provider = google_gemini_ask_deep_think if deep else google_gemini_ask
-    result = await provider(full_prompt)
+    result = await provider(full_prompt, verbose=verbose)
 
     if output_file:
         output_path = Path(output_file)
