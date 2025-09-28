@@ -43,11 +43,12 @@ asyncio.run(main())
 ### Command Line Interface
 
 ```bash
-# Perform research and save to file
-playpi google "What are the latest developments in renewable energy?" --output research.md
+# Standard Gemini prompt with optional Deep Think toggle
+playpi gemi --prompt "Summarize the latest renewable energy breakthroughs" --deep
 
-# Interactive mode (visible browser)
-playpi google "Climate change mitigation strategies" --headless=false --verbose
+# Pipe JSON to run Deep Research jobs (single or multiple)
+printf '{"prompt": "What are the latest developments in renewable energy?"}' | playpi gemi_dr
+cat jobs.json | playpi gemi_dr
 
 # Test browser session
 playpi test

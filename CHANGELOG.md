@@ -13,6 +13,7 @@ All notable changes to PlayPi will be documented in this file.
 - Resolved pytest-asyncio plugin loading issues
 - Fixed line continuation syntax in multi-line with statements
 - Restored Deep Research confirmation workflow with resilient selectors and fallbacks
+- Corrected Gemini prompt, Deep Think, and image flows to pass timeout values in seconds to wait helpers (issues/110)
 
 ### Changed
 - Restructured provider code into google/auth.py and google/gemini.py modules
@@ -35,3 +36,4 @@ All notable changes to PlayPi will be documented in this file.
 - Enhanced type hints and documentation
 - Added `PLAYPI_FORCE_AUTH_FAILURE` environment guard to disable live authentication during automated tests
 - Documented reliable test command (`PLAYPI_FORCE_AUTH_FAILURE=1 uvx hatch run test:python -m pytest`) to exercise asyncio suites successfully
+- Re-verified `PLAYPI_FORCE_AUTH_FAILURE=1 uvx hatch run test:python -m pytest` executes 34 tests successfully (wrapper exits with timeout after summary)

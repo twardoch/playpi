@@ -45,27 +45,6 @@ def _print_result(result: Any, *, success_message: str | None = None) -> None:
     _console.print(result)
 
 
-def google(
-    prompt: str,
-    *,
-    output: str | None = None,
-    headless: bool = True,
-    timeout: int = 600,
-    verbose: bool = False,
-) -> None:
-    """Run a Deep Research job."""
-    result = _run_command(
-        cli_helpers.google_research_command(
-            prompt,
-            output=output,
-            headless=headless,
-            timeout=timeout,
-            verbose=verbose,
-        )
-    )
-    _print_result(result)
-
-
 def gemi(
     *,
     file_prompt: str | None = None,
@@ -104,7 +83,6 @@ def main() -> None:
     """Entrypoint mapping CLI commands."""
     fire.Fire(
         {
-            "google": google,
             "gemi": gemi,
             "gemi_dr": gemi_dr,
             "test": test,

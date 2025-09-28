@@ -190,9 +190,11 @@ async def google_gemini_generate_image(prompt: str, **kwargs):
 
     profile_name = kwargs.get("profile") or os.environ.get("PLAYPI_PROFILE", "default")
 
+    timeout_seconds = kwargs.get("timeout", 600)
+
     config = PlayPiConfig(
         headless=kwargs.get("headless", True),
-        timeout=kwargs.get("timeout", 600) * 1000,  # Convert to milliseconds for provider waits
+        timeout=timeout_seconds * 1000,  # Convert to milliseconds for provider waits
         verbose=kwargs.get("verbose", False),
         profile=profile_name,
     )
@@ -207,7 +209,7 @@ async def google_gemini_generate_image(prompt: str, **kwargs):
 
             # Ensure the user is authenticated before interacting with UI
             logger.info("🔐 Checking authentication...")
-            await ensure_authenticated(page, config.timeout)
+            await ensure_authenticated(page, timeout_seconds)
 
             # Activate Image Generation
             logger.info("🎨 Activating Image Generation mode...")
@@ -236,7 +238,7 @@ async def google_gemini_generate_image(prompt: str, **kwargs):
             return downloaded_image_path
 
     except PlaywrightTimeoutError as e:
-        msg = f"Image generation timed out after {config.timeout / 1000} seconds"
+        msg = f"Image generation timed out after {timeout_seconds} seconds"
         raise PlayPiTimeoutError(msg) from e
     except Exception as e:
         logger.error(f"Google Gemini Image Generation failed: {e}")
@@ -317,9 +319,11 @@ async def google_gemini_ask_deep_think(prompt: str, **kwargs):
 
     profile_name = kwargs.get("profile") or os.environ.get("PLAYPI_PROFILE", "default")
 
+    timeout_seconds = kwargs.get("timeout", 600)
+
     config = PlayPiConfig(
         headless=kwargs.get("headless", True),
-        timeout=kwargs.get("timeout", 600) * 1000,  # Convert to milliseconds for provider waits
+        timeout=timeout_seconds * 1000,  # Convert to milliseconds for provider waits
         verbose=kwargs.get("verbose", False),
         profile=profile_name,
     )
@@ -334,7 +338,7 @@ async def google_gemini_ask_deep_think(prompt: str, **kwargs):
 
             # Ensure the user is authenticated before interacting with UI
             logger.info("🔐 Checking authentication...")
-            await ensure_authenticated(page, config.timeout)
+            await ensure_authenticated(page, timeout_seconds)
 
             # Activate Deep Think
             logger.info("🤔 Activating Deep Think mode...")
@@ -350,7 +354,7 @@ async def google_gemini_ask_deep_think(prompt: str, **kwargs):
 
             # Wait for completion
             logger.info("🤔 Deep Think in progress...")
-            await _wait_for_completion(page, config.timeout)
+            await _wait_for_completion(page, timeout_seconds)
 
             # Extract results
             logger.info("📄 Extracting deep think results...")
@@ -361,7 +365,7 @@ async def google_gemini_ask_deep_think(prompt: str, **kwargs):
             return markdown_result
 
     except PlaywrightTimeoutError as e:
-        msg = f"Deep think timed out after {config.timeout / 1000} seconds"
+        msg = f"Deep think timed out after {timeout_seconds} seconds"
         raise PlayPiTimeoutError(msg) from e
     except Exception as e:
         logger.error(f"Google Gemini Deep Think failed: {e}")
@@ -402,9 +406,11 @@ async def google_gemini_ask(prompt: str, **kwargs):
 
     profile_name = kwargs.get("profile") or os.environ.get("PLAYPI_PROFILE", "default")
 
+    timeout_seconds = kwargs.get("timeout", 600)
+
     config = PlayPiConfig(
         headless=kwargs.get("headless", True),
-        timeout=kwargs.get("timeout", 600) * 1000,  # Convert to milliseconds for provider waits
+        timeout=timeout_seconds * 1000,  # Convert to milliseconds for provider waits
         verbose=kwargs.get("verbose", False),
         profile=profile_name,
     )
@@ -419,7 +425,7 @@ async def google_gemini_ask(prompt: str, **kwargs):
 
             # Ensure the user is authenticated before interacting with UI
             logger.info("🔐 Checking authentication...")
-            await ensure_authenticated(page, config.timeout)
+            await ensure_authenticated(page, timeout_seconds)
 
             # Enter the prompt
             logger.info("✏️ Entering prompt...")
@@ -429,19 +435,19 @@ async def google_gemini_ask(prompt: str, **kwargs):
             logger.info("📤 Submitting prompt...")
             await _click_send_button(page)
 
-            # Wait for completion
+            # Wait for completion of the standard response (non Deep Research)
             logger.info("🤔 Waiting for response...")
-            await _wait_for_completion(page, config.timeout)
+            await _wait_for_sources_button(page, timeout_seconds)
 
-            # Extract results
+            # Extract results with enhanced format
             logger.info("📄 Extracting response...")
-            markdown_result = await _extract_simple_response(page)
+            markdown_result = await _extract_enhanced_response(page)
 
             logger.info("✅ Gemini responded successfully!")
             return markdown_result
 
     except PlaywrightTimeoutError as e:
-        msg = f"Gemini timed out after {config.timeout / 1000} seconds"
+        msg = f"Gemini timed out after {timeout_seconds} seconds"
         raise PlayPiTimeoutError(msg) from e
     except Exception as e:
         logger.error(f"Gemini request failed: {e}")
@@ -452,13 +458,277 @@ async def google_gemini_ask(prompt: str, **kwargs):
 async def _extract_simple_response(page: Page) -> str:
     """Extract the simple response from the page."""
     try:
-        response_elements = page.locator("response-element")
-        await response_elements.last.wait_for(state="visible", timeout=10000)
-        html_content = await response_elements.last.inner_html()
+        # Try multiple selectors for the response content
+        selectors = [
+            "message-content",  # Current Gemini UI
+            "response-element",  # Legacy selector
+            ".model-response-text",  # Alternative selector
+            ".markdown.markdown-main-panel",  # Content within message-content
+        ]
+
+        response_element = None
+        for selector in selectors:
+            try:
+                element = page.locator(selector).last
+                await element.wait_for(state="visible", timeout=5000)
+                logger.debug(f"Found response content using selector: {selector}")
+                response_element = element
+                break
+            except PlaywrightTimeoutError:
+                logger.debug(f"Selector '{selector}' not found or timed out")
+                continue
+
+        if response_element is None:
+            # Log the current page HTML for debugging and save it for analysis
+            page_html = await page.content()
+            logger.debug(f"Page HTML length: {len(page_html)}")
+
+            # Save the full HTML to a debug file for analysis
+            import os
+
+            debug_dir = os.path.expanduser("~/tmp")
+            os.makedirs(debug_dir, exist_ok=True)
+            debug_file = os.path.join(debug_dir, "gemini_response_debug.html")
+            with open(debug_file, "w", encoding="utf-8") as f:
+                f.write(page_html)
+            logger.debug(f"Saved page HTML to: {debug_file}")
+
+            # After saving, also add the content to the error message for analysis
+            logger.error(f"Here's the HTML of the finished response: \n\n```\n{page_html}\n```")
+
+            # Another fallback: try to get any visible text content from the page
+            try:
+                # Get all text from the page and see if we can extract meaningful content
+                page_text = await page.locator("body").text_content()
+                if page_text and len(page_text) > 500:
+                    logger.debug("Attempting to extract response from page text content")
+                    # Look for content that looks like a proper response
+                    lines = page_text.split("\n")
+                    content_lines = []
+                    in_response = False
+
+                    for line in lines:
+                        line = line.strip()
+                        # Skip navigation and UI elements
+                        if line in ["", "Chat", "Apps", "More", "Sources", "Gemini", "Google", "Bard"]:
+                            continue
+                        # Look for substantive content
+                        if len(line) > 50 and not line.startswith(("http", "www", "@", "#")):
+                            content_lines.append(line)
+                            in_response = True
+                        elif in_response and len(line) > 20:
+                            content_lines.append(line)
+
+                    if content_lines:
+                        logger.debug(f"Extracted {len(content_lines)} content lines from page text")
+                        return "\n\n".join(content_lines)
+            except Exception as text_extract_error:
+                logger.debug(f"Failed to extract from page text: {text_extract_error}")
+
+            msg = "No response content found using any selector or fallback method"
+            raise ProviderError(msg)
+
+        html_content = await response_element.inner_html()
+        logger.debug(f"Extracted HTML content length: {len(html_content)}")
         return html_to_markdown(html_content)
+
     except Exception as e:
+        # Log additional debug info about the page state
+        try:
+            page_title = await page.title()
+            page_url = page.url
+            logger.debug(f"Page state - Title: '{page_title}', URL: '{page_url}'")
+
+            # Check if there's an error message on the page
+            error_elements = page.locator(".error, .warning, [class*='error'], [class*='warning']")
+            error_count = await error_elements.count()
+            if error_count > 0:
+                for i in range(min(error_count, 3)):  # Check first 3 error elements
+                    error_text = await error_elements.nth(i).text_content()
+                    logger.debug(f"Error element {i}: {error_text}")
+        except Exception:
+            pass  # Debug logging shouldn't fail the main operation
+
         msg = f"Failed to extract simple response: {e}"
         raise ProviderError(msg) from e
+
+
+async def _extract_enhanced_response(page: Page) -> str:
+    """Extract the enhanced response with thinking, output, and sources."""
+    try:
+        logger.debug("Starting enhanced response extraction")
+
+        # First extract the main output
+        output_content = await _extract_main_output(page)
+
+        # Try to extract thinking content
+        thinking_content = await _extract_thinking_content(page)
+
+        # Try to extract sources content
+        sources_content = await _extract_sources_content(page)
+
+        # Format the final response
+        result_parts = []
+
+        if thinking_content:
+            result_parts.append(f"<thinking>\n{thinking_content}\n</thinking>")
+
+        if output_content:
+            result_parts.append(f"<output>\n{output_content}\n</output>")
+
+        if sources_content:
+            result_parts.append(f"<sources>\n{sources_content}\n</sources>")
+
+        if not result_parts:
+            # Fallback to simple extraction if nothing was found
+            logger.warning("No enhanced content found, falling back to simple extraction")
+            return await _extract_simple_response(page)
+
+        return "\n\n".join(result_parts)
+
+    except Exception as e:
+        logger.warning(f"Enhanced extraction failed: {e}, falling back to simple extraction")
+        return await _extract_simple_response(page)
+
+
+async def _extract_main_output(page: Page) -> str:
+    """Extract the main response output."""
+    try:
+        # Try multiple selectors for the response content
+        selectors = [
+            "message-content.model-response-text",  # Current Gemini UI with thinking
+            "message-content",  # Current Gemini UI
+            ".model-response-text",  # Alternative selector
+            ".markdown.markdown-main-panel",  # Content within message-content
+        ]
+
+        for selector in selectors:
+            try:
+                element = page.locator(selector).last
+                await element.wait_for(state="visible", timeout=3000)
+                logger.debug(f"Found main output using selector: {selector}")
+                html_content = await element.inner_html()
+                return html_to_markdown(html_content)
+            except PlaywrightTimeoutError:
+                continue
+
+        # If no specific selector works, fall back to simple extraction logic
+        return await _extract_simple_response(page)
+
+    except Exception as e:
+        logger.debug(f"Failed to extract main output: {e}")
+        return ""
+
+
+async def _extract_thinking_content(page: Page) -> str:
+    """Extract thinking content by clicking the Show thinking button if available."""
+    try:
+        logger.debug("Looking for Show thinking button")
+
+        # Look for the Show thinking button
+        thinking_button = page.locator('[data-test-id="thoughts-header-button"]')
+
+        # Check if button exists and is visible
+        if await thinking_button.count() == 0:
+            logger.debug("No Show thinking button found")
+            return ""
+
+        # Check if thinking is already expanded (button shows "Show thinking" vs "Hide thinking")
+        button_text = await thinking_button.text_content()
+        if button_text and "show thinking" in button_text.lower():
+            logger.debug("Clicking Show thinking button")
+            await thinking_button.click()
+            # Wait a moment for the content to expand
+            await asyncio.sleep(2)
+        else:
+            logger.debug("Thinking appears to already be expanded")
+
+        # Extract the thinking content
+        thinking_content_selector = '[data-test-id="thoughts-content"]'
+        thinking_element = page.locator(thinking_content_selector)
+
+        if await thinking_element.count() > 0:
+            await thinking_element.wait_for(state="visible", timeout=5000)
+            html_content = await thinking_element.inner_html()
+            logger.debug(f"Extracted thinking content length: {len(html_content)}")
+            return html_to_markdown(html_content)
+        logger.debug("No thinking content found after clicking button")
+        return ""
+
+    except Exception as e:
+        logger.debug(f"Failed to extract thinking content: {e}")
+        return ""
+
+
+async def _extract_sources_content(page: Page) -> str:
+    """Extract sources content by clicking the Sources button if available."""
+    try:
+        logger.debug("Looking for Sources button")
+
+        # Look for the Sources button in the sources list
+        sources_button = page.locator('button:has-text("Sources")')
+
+        # Check if button exists and is visible
+        if await sources_button.count() == 0:
+            logger.debug("No Sources button found")
+            return ""
+
+        logger.debug("Clicking Sources button")
+        await sources_button.click()
+
+        # Wait for the sources sidebar to appear
+        await asyncio.sleep(2)
+
+        # Extract the sources content from the sidebar
+        sources_sidebar = page.locator("context-sidebar")
+        if await sources_sidebar.count() > 0:
+            await sources_sidebar.wait_for(state="visible", timeout=5000)
+
+            # Look for individual source cards
+            source_cards = sources_sidebar.locator("inline-source-card")
+            sources_count = await source_cards.count()
+
+            if sources_count > 0:
+                logger.debug(f"Found {sources_count} source cards")
+                sources_list = []
+
+                for i in range(sources_count):
+                    try:
+                        card = source_cards.nth(i)
+                        # Extract title and URL
+                        title_element = card.locator(".title")
+                        title = await title_element.text_content() if await title_element.count() > 0 else ""
+
+                        link_element = card.locator("a")
+                        url = await link_element.get_attribute("href") if await link_element.count() > 0 else ""
+
+                        snippet_element = card.locator(".snippet")
+                        snippet = await snippet_element.text_content() if await snippet_element.count() > 0 else ""
+
+                        if title and url:
+                            source_entry = (
+                                f"**{title.strip()}**\n{url}\n{snippet.strip()}"
+                                if snippet
+                                else f"**{title.strip()}**\n{url}"
+                            )
+                            sources_list.append(source_entry)
+                    except Exception as card_error:
+                        logger.debug(f"Failed to extract source card {i}: {card_error}")
+                        continue
+
+                if sources_list:
+                    return "\n\n".join(sources_list)
+
+            # Fallback: get all text content from sidebar
+            html_content = await sources_sidebar.inner_html()
+            logger.debug(f"Extracted sources sidebar HTML length: {len(html_content)}")
+            return html_to_markdown(html_content)
+        logger.debug("No sources sidebar found after clicking button")
+        return ""
+
+    except Exception as e:
+        logger.debug(f"Failed to extract sources content: {e}")
+        return ""
 
 
 async def _enter_prompt(page: Page, prompt: str) -> None:
@@ -638,6 +908,24 @@ async def _handle_confirmation_dialog(page: Page, timeout: int) -> None:
             continue
 
     logger.warning("Confirmation widget detected but no clickable button matched known selectors")
+
+
+async def _wait_for_sources_button(page: Page, timeout: int) -> None:
+    """Wait for the standard response by ensuring the Sources button appears."""
+    logger.info(f"⏱️ Waiting for Sources button (timeout: {timeout}s)...")
+    try:
+        sources_button = page.get_by_role("button", name="Sources")
+        await sources_button.wait_for(state="visible", timeout=timeout * 1000)
+        logger.info("📚 Sources button detected; response ready.")
+    except PlaywrightTimeoutError:
+        logger.info("⏳ Sources button not detected within timeout; continuing with content fallback.")
+        try:
+            content_length = len(await page.content())
+            logger.debug(f"📏 Page content length after timeout: {content_length}")
+        except Exception as exc:  # pragma: no cover - diagnostic logging only
+            logger.debug(f"Unable to inspect page content after Sources timeout: {exc}")
+    except Exception as exc:  # pragma: no cover - defensive guard
+        logger.warning(f"Failed while waiting for Sources button: {exc}; continuing")
 
 
 async def _wait_for_completion(page: Page, timeout: int) -> None:

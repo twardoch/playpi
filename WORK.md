@@ -15,7 +15,7 @@ this_file: WORK.md
 - **Status**: Tests now run successfully with async support
 - **Issue discovered**: `uvx hatch test` doesn't load pytest-asyncio properly
 - **Workaround**: Use `uvx hatch run test:python -m pytest` for running async tests
-- **Test Coverage**: 26 tests collected, syntax errors resolved
+- **Test Coverage**: 34 tests collected, syntax errors resolved
 - **Async Tests**: Now properly supported with pytest-asyncio plugin
 
 ### Technical Findings
@@ -41,10 +41,16 @@ this_file: WORK.md
 - [x] Draft failing tests for Deep Research confirmation helper (mock Playwright locators, confirm fallback locator path)
 - [x] Implement minimal code to satisfy the new tests while keeping helpers short and focused
 - [x] Execute `PLAYPI_FORCE_AUTH_FAILURE=1 uvx hatch run test:python -m pytest` and document outcomes (34 passed; command reported timeout after completion)
+- [x] Reproduced issues/110 with tighter tests asserting timeout units and patched Gemini ask/deep-think/image flows to hand seconds to wait helpers
 - [ ] Update CHANGELOG/README/examples once behavior validates in tests
 
 ### Test Execution Summary
-- Command: `uvx hatch test`
+- Command: `uvx hatch test` (2025-09-28)
   - Result: Failed (async plugin not loaded; command unsuitable for asyncio tests)
-- Command: `PLAYPI_FORCE_AUTH_FAILURE=1 uvx hatch run test:python -m pytest`
-  - Result: 34 passed, 0 failed (hatch wrapper timed out post-summary)
+- Command: `PLAYPI_FORCE_AUTH_FAILURE=1 uvx hatch run test:python -m pytest` (2025-09-28)
+  - Result: 34 passed, 0 failed; hatch wrapper timed out after success (exit code 124)
+  - Notes: Re-run confirms asyncio suite still green after issues/110 fixes
+
+### Maintenance Attempts
+- Command: `uvx hatch clean` (2025-09-28)
+  - Result: Command timed out after ~14s; no workspace changes detected afterward

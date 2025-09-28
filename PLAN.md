@@ -13,7 +13,7 @@ this_file: PLAN.md
 - **Purpose**: Confirm the restored confirmation locator sequence works against the live Gemini UI
 - **Pre-check**: Ensure Chromium profile has valid Google authentication and Deep Research access
 - **Execution**:
-  1. Run `playpi google "smoke test prompt" --headless=false --verbose` to observe the workflow
+  1. Pipe a JSON job into `playpi gemi_dr` (e.g. `printf '{"prompt": "smoke test prompt"}' | playpi gemi_dr`) to observe the workflow
   2. Capture whether `deep-research-confirmation-widget` appears and confirm primary locator click succeeds
   3. If locator fails, collect DOM snapshot and update selectors/tests accordingly
 - **Acceptance**: Successful research completion without manual intervention; CHANGELOG updated with confirmation note

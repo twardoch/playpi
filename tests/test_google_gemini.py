@@ -10,6 +10,7 @@ from playwright.async_api import TimeoutError as PlaywrightTimeoutError
 
 from playpi.providers.google.gemini import (
     _handle_confirmation_dialog,
+    _wait_for_sources_button,
     google_gemini_ask,
     google_gemini_ask_deep_think,
     google_gemini_deep_research,
@@ -50,7 +51,7 @@ async def test_google_gemini_deep_research_full(mock_google_gemini_deep_research
             prompt="test prompt", prompt_path="/fake/prompt.txt", output_path="/fake/output.txt"
         )
         assert result == pathlib.Path("/fake/output.txt")
-        mock_open.assert_any_call("/fake/prompt.txt", "r")
+        mock_open.assert_any_call("/fake/prompt.txt")
         mock_open.assert_any_call("/fake/output.txt", "w")
         mock_google_gemini_deep_research.assert_called_once_with("file prompt\ntest prompt")
 
@@ -110,6 +111,7 @@ async def test_google_gemini_generate_image(mock_download, mock_create_session):
     mock_download.return_value = "/fake/image.png"
 
     with (
+        patch("playpi.providers.google.gemini.ensure_authenticated", new_callable=AsyncMock) as mock_auth,
         patch("playpi.providers.google.gemini._activate_image_generation", new_callable=AsyncMock) as mock_activate,
         patch("playpi.providers.google.gemini._enter_prompt", new_callable=AsyncMock) as mock_enter_prompt,
         patch("playpi.providers.google.gemini._click_send_button", new_callable=AsyncMock) as mock_click_send,
@@ -118,6 +120,7 @@ async def test_google_gemini_generate_image(mock_download, mock_create_session):
         result = await google_gemini_generate_image("a cat", download_path="/fake")
 
         assert result == "/fake/image.png"
+        mock_auth.assert_called_once_with(mock_page, 600)
         mock_activate.assert_called_once_with(mock_page)
         mock_enter_prompt.assert_called_once_with(mock_page, "a cat")
         mock_click_send.assert_called_once_with(mock_page)
@@ -135,10 +138,11 @@ async def test_google_gemini_ask_deep_think(mock_create_session):
     mock_create_session.return_value.__aenter__.return_value = mock_session
 
     with (
+        patch("playpi.providers.google.gemini.ensure_authenticated", new_callable=AsyncMock) as mock_auth,
         patch("playpi.providers.google.gemini._activate_deep_think", new_callable=AsyncMock) as mock_activate,
         patch("playpi.providers.google.gemini._enter_prompt", new_callable=AsyncMock) as mock_enter_prompt,
         patch("playpi.providers.google.gemini._click_send_button", new_callable=AsyncMock) as mock_click_send,
-        patch("playpi.providers.google.gemini._wait_for_completion", new_callable=AsyncMock) as mock_wait,
+        patch("playpi.providers.google.gemini._wait_for_sources_button", new_callable=AsyncMock) as mock_wait,
         patch("playpi.providers.google.gemini.extract_research_content", new_callable=AsyncMock) as mock_extract,
         patch("playpi.providers.google.gemini.html_to_markdown") as mock_markdown,
     ):
@@ -148,10 +152,11 @@ async def test_google_gemini_ask_deep_think(mock_create_session):
         result = await google_gemini_ask_deep_think("a thought")
 
         assert result == "# Test"
+        mock_auth.assert_called_once_with(mock_page, 600)
         mock_activate.assert_called_once_with(mock_page)
         mock_enter_prompt.assert_called_once_with(mock_page, "a thought")
         mock_click_send.assert_called_once_with(mock_page)
-        mock_wait.assert_called_once()
+        mock_wait.assert_called_once_with(mock_page, 600)
         mock_extract.assert_called_once_with(mock_page)
         mock_markdown.assert_called_once_with("<h1>Test</h1>")
 
@@ -166,6 +171,7 @@ async def test_google_gemini_ask(mock_create_session):
     mock_create_session.return_value.__aenter__.return_value = mock_session
 
     with (
+        patch("playpi.providers.google.gemini.ensure_authenticated", new_callable=AsyncMock) as mock_auth,
         patch("playpi.providers.google.gemini._enter_prompt", new_callable=AsyncMock) as mock_enter_prompt,
         patch("playpi.providers.google.gemini._click_send_button", new_callable=AsyncMock) as mock_click_send,
         patch("playpi.providers.google.gemini._wait_for_completion", new_callable=AsyncMock) as mock_wait,
@@ -176,9 +182,10 @@ async def test_google_gemini_ask(mock_create_session):
         result = await google_gemini_ask("a question")
 
         assert result == "## Test Result"
+        mock_auth.assert_called_once_with(mock_page, 600)
         mock_enter_prompt.assert_called_once_with(mock_page, "a question")
         mock_click_send.assert_called_once_with(mock_page)
-        mock_wait.assert_called_once()
+        mock_wait.assert_called_once_with(mock_page, 600)
         mock_extract.assert_called_once_with(mock_page)
 
 
@@ -237,3 +244,32 @@ async def test_handle_confirmation_dialog_handles_missing_widget():
     await _handle_confirmation_dialog(page, timeout=15)
 
     widget.locator.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_wait_for_sources_button_when_visible():
+    """Sources button wait helper waits for visibility."""
+    page = MagicMock()
+    button = MagicMock()
+    button.wait_for = AsyncMock()
+    page.get_by_role.return_value = button
+
+    await _wait_for_sources_button(page, timeout=5)
+
+    page.get_by_role.assert_called_once_with("button", name="Sources")
+    button.wait_for.assert_awaited_once_with(state="visible", timeout=5000)
+
+
+@pytest.mark.asyncio
+async def test_wait_for_sources_button_when_timeout():
+    """Sources button wait helper falls back gracefully on timeout."""
+    page = MagicMock()
+    button = MagicMock()
+    button.wait_for = AsyncMock(side_effect=PlaywrightTimeoutError("timeout"))
+    page.get_by_role.return_value = button
+    page.content = AsyncMock(return_value="<html></html>")
+
+    await _wait_for_sources_button(page, timeout=1)
+
+    button.wait_for.assert_awaited_once_with(state="visible", timeout=1000)
+    page.content.assert_awaited_once()
