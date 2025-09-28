@@ -5,10 +5,10 @@ import inspect
 
 import pytest
 
-from playpi import google_deep_research as google_deep_research_public
+from playpi import google_gemini_deep_research as google_deep_research_public
 from playpi.example_prompts import PROMPT_EN
 from playpi.exceptions import AuthenticationError, ProviderError
-from playpi.providers.google import google_deep_research
+from playpi.providers.google import google_gemini_deep_research as google_deep_research
 
 
 def test_google_deep_research_import():
