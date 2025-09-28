@@ -3,11 +3,48 @@ this_file: PLAN.md
 
 # Current Status and Next Steps
 
-I have been working on a major refactoring of the `playpi` library to support a wider range of Google Gemini features, as outlined in `issues/104.md`. This involved restructuring the provider code, implementing new functions for deep research, image generation, and different modes of asking Gemini, and renaming functions as requested.
+✅ **COMPLETED**: Major refactoring of the `playpi` library to support a wider range of Google Gemini features (issues/104.md):
+- ✅ Restructured provider code into google/auth.py and google/gemini.py modules
+- ✅ Implemented new functions for deep research, image generation, and different modes
+- ✅ Renamed functions to google_gemini_* convention
+- ✅ Fixed all syntax errors in source and test files
+- ✅ All tests now pass with proper async support
 
-During this process, I introduced syntax errors in `src/playpi/providers/google/gemini.py` and `tests/test_google_gemini.py`, which caused the test suite to fail. My immediate goal is to fix these errors and get the tests passing. Once the tests are green, I will continue with the validation phase of the refactoring.
+🎯 **CURRENT FOCUS**: Implement CLI enhancements (issues/105.md):
+- Add `gemi_dr` command for multi-research workflows
+- Add `gemi` command for standard prompts with file input/output support
+- Update existing CLI to use new refactored functions
+- Complete final validation of all features
 
-# Refactor PlayPi for Gemini Workflows
+# Phase 4: CLI Enhancement (issues/105.md)
+
+## New CLI Commands
+
+### `gemi_dr` Command
+- **Purpose**: Execute multiple concurrent deep research tasks
+- **Function**: Calls `google_gemini_deep_research_multi`
+- **Input**: Reads JSON configuration from stdin
+- **Config Format**: List of research task configurations
+- **Behavior**: No CLI arguments, purely stdin-driven
+
+### `gemi` Command
+- **Purpose**: Execute single prompts with flexible input/output
+- **Function**: Calls `google_gemini_ask` or `google_gemini_ask_deep_think`
+- **Arguments**:
+  - `--file_prompt`: Path to file containing base prompt
+  - `--prompt`: Additional prompt text (appended to file_prompt if both provided)
+  - `--deep`: Flag to use Deep Think mode instead of standard mode
+  - `--output_file`: Path to save output (defaults to stdout)
+- **Behavior**: Combines file_prompt + prompt, processes with appropriate function
+
+### CLI Update Requirements
+1. **Preserve existing functionality**: Maintain current `google` command behavior
+2. **Add new commands**: Implement `gemi` and `gemi_dr` as described
+3. **Update imports**: Use new refactored function names throughout
+4. **Error handling**: Proper validation and user feedback
+5. **Documentation**: Update help text and examples
+
+# Refactor PlayPi for Gemini Workflows (COMPLETED)
 
 ## Goal
 Refactor the `playpi` library to provide a structured and extensible framework for automating various Google Gemini features, including Deep Research, Image Generation, Deep Think, and standard prompts. This involves reorganizing the codebase, implementing a clearer API, and adding new functionalities as per `issues/104.md`.
