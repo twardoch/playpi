@@ -27,8 +27,7 @@ class PlayPiSession:
         self._browser: Browser | None = None
         self._context: BrowserContext | None = None
         self._context_owned = False
-        self._page: Page | None = None
-        self._page_owned = False
+            self._pages: list[Page] = []
 
     async def __aenter__(self) -> Self:
         await self.start()
@@ -62,12 +61,7 @@ class PlayPiSession:
                 self._context_owned = True
             self._context = context
 
-            logger.debug("Opening new page")
-            page = await context.new_page()
-            await page.bring_to_front()
-            self._exit_stack.push_async_callback(page.close)
-            self._page = page
-            self._page_owned = True
+            await self.new_page()
 
             logger.info("PlayPi session started")
         except PlaywrightAuthorError as exc:  # pragma: no cover - bubble up descriptive message
@@ -79,12 +73,25 @@ class PlayPiSession:
             msg = f"Failed to start browser session: {exc}"
             raise BrowserError(msg) from exc
 
-    async def get_page(self) -> Page:
-        """Return the active Playwright page."""
-        if self._page is None:
+    async def new_page(self) -> Page:
+        """Create and return a new page."""
+        if self._context is None or self._exit_stack is None:
             message = "Session not started. Call start() first."
             raise SessionError(message)
-        return self._page
+
+        logger.debug("Opening new page")
+        page = await self._context.new_page()
+        await page.bring_to_front()
+        self._exit_stack.push_async_callback(page.close)
+        self._pages.append(page)
+        return page
+
+    async def get_page(self) -> Page:
+        """Return the active Playwright page."""
+        if not self._pages:
+            message = "Session not started or no pages available. Call start() or new_page() first."
+            raise SessionError(message)
+        return self._pages[-1]
 
     async def get_authenticated_page(self, _provider: str) -> Page:
         """Return an authenticated page for the requested provider.
@@ -104,8 +111,7 @@ class PlayPiSession:
             self._browser = None
             self._context = None
             self._context_owned = False
-            self._page = None
-            self._page_owned = False
+            self._pages = []
             logger.info("PlayPi session closed")
 
 
