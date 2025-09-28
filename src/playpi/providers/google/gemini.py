@@ -54,11 +54,13 @@ async def google_gemini_deep_research(
     if headless:
         logger.debug("playwrightauthor runs in headed mode; ignoring headless=True request")
 
+    profile_name = profile or os.environ.get("PLAYPI_PROFILE", "default")
+
     config = PlayPiConfig(
         headless=headless,
         timeout=timeout * 1000,  # Convert to milliseconds for provider waits
         verbose=verbose,
-        profile=profile or "default",
+        profile=profile_name,
     )
 
     try:
@@ -130,7 +132,10 @@ async def google_gemini_deep_research_multi(config: list[dict], **kwargs):
                 return pathlib.Path(output_path)
             return result
 
-    async with create_session(PlayPiConfig(**kwargs)) as session:
+    config_kwargs = dict(kwargs)
+    config_kwargs.setdefault("profile", os.environ.get("PLAYPI_PROFILE", "default"))
+
+    async with create_session(PlayPiConfig(**config_kwargs)) as session:
         tasks = [run_task(session, task_config) for task_config in config]
         return await asyncio.gather(*tasks)
 
@@ -183,11 +188,13 @@ async def google_gemini_generate_image(prompt: str, **kwargs):
 
     logger.info(f"Starting Google Gemini Image Generation for: {prompt[:50]}...")
 
+    profile_name = kwargs.get("profile") or os.environ.get("PLAYPI_PROFILE", "default")
+
     config = PlayPiConfig(
         headless=kwargs.get("headless", True),
         timeout=kwargs.get("timeout", 600) * 1000,  # Convert to milliseconds for provider waits
         verbose=kwargs.get("verbose", False),
-        profile=kwargs.get("profile", "default"),
+        profile=profile_name,
     )
 
     try:
@@ -308,11 +315,13 @@ async def google_gemini_ask_deep_think(prompt: str, **kwargs):
 
     logger.info(f"Starting Google Gemini Deep Think for: {prompt[:50]}...")
 
+    profile_name = kwargs.get("profile") or os.environ.get("PLAYPI_PROFILE", "default")
+
     config = PlayPiConfig(
         headless=kwargs.get("headless", True),
         timeout=kwargs.get("timeout", 600) * 1000,  # Convert to milliseconds for provider waits
         verbose=kwargs.get("verbose", False),
-        profile=kwargs.get("profile", "default"),
+        profile=profile_name,
     )
 
     try:
@@ -391,11 +400,13 @@ async def google_gemini_ask(prompt: str, **kwargs):
 
     logger.info(f"Asking Gemini: {prompt[:50]}...")
 
+    profile_name = kwargs.get("profile") or os.environ.get("PLAYPI_PROFILE", "default")
+
     config = PlayPiConfig(
         headless=kwargs.get("headless", True),
         timeout=kwargs.get("timeout", 600) * 1000,  # Convert to milliseconds for provider waits
         verbose=kwargs.get("verbose", False),
-        profile=kwargs.get("profile", "default"),
+        profile=profile_name,
     )
 
     try:
@@ -582,34 +593,51 @@ async def _click_send_button(page: Page) -> None:
 
 
 async def _handle_confirmation_dialog(page: Page, timeout: int) -> None:
-    """Handle the Deep Research confirmation dialog (works with localized text)."""
+    """Handle the Deep Research confirmation dialog (with resilient selectors)."""
+    logger.debug("Waiting for deep-research-confirmation-widget to appear")
     try:
-        logger.debug("Waiting for deep-research-confirmation-widget to appear")
-        # Wait for confirmation widget to appear - be more generous with timeout
         confirmation_widget = page.locator("deep-research-confirmation-widget")
-        await confirmation_widget.wait_for(state="visible", timeout=20000)  # Increased timeout
-
-        logger.debug("Confirmation widget found, looking for confirm button")
-        # Click the confirmation button using data-test-id (language-independent)
-        confirm_button = confirmation_widget.locator('[data-test-id="confirm-button"]')
-        await confirm_button.wait_for(state="visible", timeout=10000)
-
-        # Get button text for logging (helps with debugging localization)
-        button_text = await confirm_button.text_content()
-        logger.debug(f"Found confirmation button with text: '{button_text}'")
-
-        logger.debug("Clicking confirmation button")
-        await confirm_button.click(force=True)  # Use force click to ensure it works
-        logger.debug("Deep Research confirmation clicked successfully")
-
-        # Wait a moment to ensure the click was processed
-        await asyncio.sleep(1)
-
+        await confirmation_widget.wait_for(state="visible", timeout=20000)
     except PlaywrightTimeoutError:
         logger.debug("No confirmation dialog appeared within timeout, continuing")
-    except Exception as e:
-        logger.warning(f"Error handling confirmation dialog: {e}, continuing anyway")
-        # Don't raise error here as the confirmation dialog might not always appear
+        return
+    except Exception as exc:
+        logger.warning(f"Failed while waiting for confirmation widget: {exc}")
+        return
+
+    selectors = [
+        '[data-test-id="confirm-button"]',
+        "button:has-text('Start research')",
+        "button.confirm-button",
+    ]
+
+    for selector in selectors:
+        logger.debug(f"Trying confirmation selector: {selector}")
+        candidate = confirmation_widget.locator(selector)
+        try:
+            await candidate.wait_for(state="visible", timeout=5000)
+        except PlaywrightTimeoutError:
+            logger.debug(f"Selector timed out: {selector}")
+            continue
+        except Exception as exc:
+            logger.debug(f"Selector error ({selector}): {exc}")
+            continue
+
+        try:
+            button_text = await candidate.text_content()
+            logger.debug(f"Found confirmation button with text: '{(button_text or '').strip()}'")
+            try:
+                await candidate.click()
+            except Exception:
+                await candidate.click(force=True)
+            await asyncio.sleep(0.5)
+            logger.debug("Deep Research confirmation clicked successfully")
+            return
+        except Exception as exc:
+            logger.warning(f"Failed to click confirmation button ({selector}): {exc}")
+            continue
+
+    logger.warning("Confirmation widget detected but no clickable button matched known selectors")
 
 
 async def _wait_for_completion(page: Page, timeout: int) -> None:

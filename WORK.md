@@ -34,3 +34,17 @@ this_file: WORK.md
 - Update CLI to implement new commands per issues/105.md
 - Run comprehensive test validation
 - Complete refactoring verification
+
+## Current Iteration - 2025-09-28 (In Progress)
+
+- [x] Draft failing tests for new CLI commands (`gemi`, `gemi_dr`) covering stdin parsing, prompt merging, and output routing
+- [x] Draft failing tests for Deep Research confirmation helper (mock Playwright locators, confirm fallback locator path)
+- [x] Implement minimal code to satisfy the new tests while keeping helpers short and focused
+- [x] Execute `PLAYPI_FORCE_AUTH_FAILURE=1 uvx hatch run test:python -m pytest` and document outcomes (34 passed; command reported timeout after completion)
+- [ ] Update CHANGELOG/README/examples once behavior validates in tests
+
+### Test Execution Summary
+- Command: `uvx hatch test`
+  - Result: Failed (async plugin not loaded; command unsuitable for asyncio tests)
+- Command: `PLAYPI_FORCE_AUTH_FAILURE=1 uvx hatch run test:python -m pytest`
+  - Result: 34 passed, 0 failed (hatch wrapper timed out post-summary)

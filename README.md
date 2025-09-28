@@ -24,11 +24,11 @@ uv sync
 
 ```python
 import asyncio
-from playpi import google_deep_research
+from playpi import google_gemini_deep_research
 
 async def main():
     # Perform deep research on a topic
-    result = await google_deep_research(
+    result = await google_gemini_deep_research(
         "Analyze the impact of quantum computing on cryptography",
         headless=True,  # Retained for compatibility; playwrightauthor runs headed
         timeout=600,    # 10 minute timeout
@@ -43,15 +43,20 @@ asyncio.run(main())
 ### Command Line Interface
 
 ```bash
-# Perform research and save to file
+# Deep research helper (legacy command, prompt argument required)
 playpi google "What are the latest developments in renewable energy?" --output research.md
 
-# Headless flag is currently ignored (playwrightauthor manages a visible Chrome instance)
-playpi google "Climate change mitigation strategies" --verbose
+# Standard Gemini prompt with optional file prompt + Deep Think toggle
+playpi gemi --file_prompt prompt.md --prompt "Add a concise summary" --deep --output_file response.md
+
+# Multi-job Deep Research via JSON piped on stdin
+cat jobs.json | playpi gemi_dr
 
 # Test browser session
 playpi test
 ```
+
+Headless flags are currently ignored because playwrightauthor always operates Chrome in headed mode.
 
 ## Prerequisites
 
@@ -80,7 +85,7 @@ Before using Google Deep Research, you need to:
 
 ## API Reference
 
-### `google_deep_research(prompt, **options)`
+### `google_gemini_deep_research(prompt, **options)`
 
 Perform Google Gemini Deep Research on a given prompt.
 
@@ -104,15 +109,17 @@ Perform Google Gemini Deep Research on a given prompt.
 ### Running Tests
 
 ```bash
-# Run all tests
-uv run pytest
+# Run all tests without hitting live Gemini login
+PLAYPI_FORCE_AUTH_FAILURE=1 uvx hatch run test:python -m pytest
 
-# Run with coverage
-uv run pytest --cov=src/playpi --cov-report=html
+# Run with coverage (same auth guard applies)
+PLAYPI_FORCE_AUTH_FAILURE=1 uvx hatch run test:python -m pytest --cov=src/playpi --cov-report=html
 
 # Run specific test categories
-uv run pytest tests/test_session.py -v
+PLAYPI_FORCE_AUTH_FAILURE=1 uvx hatch run test:python -m pytest tests/test_session.py -v
 ```
+
+`PLAYPI_FORCE_AUTH_FAILURE=1` short-circuits the authentication check during testing so suites do not wait for manual Google sign-in.
 
 ### Code Quality
 

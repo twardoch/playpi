@@ -102,7 +102,7 @@ all = [
 # Entry points for command-line executables installed with the package.
 #------------------------------------------------------------------------------
 [project.scripts]
-playpi = "playpi.cli:main"
+playpi = "playpi.__main__:main"
 
 #------------------------------------------------------------------------------
 # BUILD SYSTEM CONFIGURATION

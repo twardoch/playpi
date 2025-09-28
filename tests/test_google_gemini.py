@@ -3,11 +3,13 @@
 
 import pathlib
 import unittest
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from playwright.async_api import TimeoutError as PlaywrightTimeoutError
 
 from playpi.providers.google.gemini import (
+    _handle_confirmation_dialog,
     google_gemini_ask,
     google_gemini_ask_deep_think,
     google_gemini_deep_research,
@@ -178,3 +180,60 @@ async def test_google_gemini_ask(mock_create_session):
         mock_click_send.assert_called_once_with(mock_page)
         mock_wait.assert_called_once()
         mock_extract.assert_called_once_with(mock_page)
+
+
+@pytest.mark.asyncio
+async def test_handle_confirmation_dialog_clicks_primary_locator():
+    """Confirmation helper should click the primary data-test-id button."""
+    page = MagicMock()
+    widget = MagicMock()
+    confirm_button = MagicMock()
+
+    widget.wait_for = AsyncMock()
+    widget.locator.return_value = confirm_button
+    confirm_button.wait_for = AsyncMock()
+    confirm_button.click = AsyncMock()
+    confirm_button.text_content = AsyncMock(return_value="Start research")
+    page.locator.return_value = widget
+
+    await _handle_confirmation_dialog(page, timeout=15)
+
+    widget.wait_for.assert_awaited_once()
+    widget.locator.assert_called_with('[data-test-id="confirm-button"]')
+    confirm_button.click.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_handle_confirmation_dialog_falls_back_to_text_selector():
+    """Helper should fall back when the data-test-id lookup fails."""
+    page = MagicMock()
+    widget = MagicMock()
+    primary_button = MagicMock()
+    fallback_button = MagicMock()
+
+    widget.wait_for = AsyncMock()
+    widget.locator.side_effect = [primary_button, fallback_button]
+    primary_button.wait_for = AsyncMock(side_effect=PlaywrightTimeoutError("missing"))
+    fallback_button.wait_for = AsyncMock()
+    fallback_button.click = AsyncMock()
+    fallback_button.text_content = AsyncMock(return_value="Start research")
+    page.locator.return_value = widget
+
+    await _handle_confirmation_dialog(page, timeout=15)
+
+    assert widget.locator.call_count >= 2
+    fallback_button.click.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_handle_confirmation_dialog_handles_missing_widget():
+    """Helper should swallow widget timeouts for resilience."""
+    page = MagicMock()
+    widget = MagicMock()
+
+    widget.wait_for = AsyncMock(side_effect=PlaywrightTimeoutError("no widget"))
+    page.locator.return_value = widget
+
+    await _handle_confirmation_dialog(page, timeout=15)
+
+    widget.locator.assert_not_called()

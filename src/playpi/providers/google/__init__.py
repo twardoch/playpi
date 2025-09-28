@@ -1,5 +1,6 @@
 """Google provider for PlayPi."""
 
+from playpi.providers.google import cli_helpers
 from playpi.providers.google.gemini import (
     google_gemini_ask,
     google_gemini_ask_deep_think,
@@ -10,6 +11,7 @@ from playpi.providers.google.gemini import (
 )
 
 __all__ = [
+    "cli_helpers",
     "google_gemini_ask",
     "google_gemini_ask_deep_think",
     "google_gemini_deep_research",
