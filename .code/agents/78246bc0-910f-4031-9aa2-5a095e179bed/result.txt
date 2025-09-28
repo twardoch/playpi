@@ -1,0 +1,58 @@
+
+Here is a detailed plan to refactor the PlayPi CLI.
+
+### **Phase 1: Scaffolding and Initial Implementation**
+
+1.  **Create `src/playpi/__main__.py`**
+    *   This will be the new main entry point for the CLI.
+    *   It will contain a `main` function that uses `fire.Fire` to expose the commands.
+    *   Initially, it will be a thin wrapper, delegating to functions in other modules.
+
+2.  **Create `src/playpi/providers/google/cli.py`**
+    *   This new file will house the CLI logic for the Google-related commands.
+    *   Functions in this file will handle argument parsing and calling the core provider functions.
+
+3.  **Create `src/playpi/session_cli.py`**
+    *   This new file will contain the logic for the `test` command.
+
+### **Phase 2: Migration and New Command Implementation**
+
+1.  **Migrate Existing Commands**
+    *   **`google_research`**: Move the logic from `google_research` in `src/playpi/cli.py` to a new function called `google_research_cli` in `src/playpi/providers/google/cli.py`.
+    *   **`test_session`**: Move the logic from `test_session` in `src/playpi/cli.py` to a new function called `test_session_cli` in `src/playpi/session_cli.py`.
+
+2.  **Implement New Commands in `src/playpi/providers/google/cli.py`**
+    *   **`gemi_dr_cli`**:
+        *   This function will read a JSON configuration from `stdin`.
+        *   It will call `google_gemini_deep_research_multi` with the parsed configuration.
+    *   **`gemi_cli`**:
+        *   This function will accept `--prompt`, `--file_prompt`, `--deep`, and `--output_file` arguments.
+        *   It will call either `google_gemini_ask` or `google_gemini_ask_deep_think` based on the `--deep` flag.
+        *   It will write the output to the specified file or to `stdout`.
+
+### **Phase 3: Wiring and Configuration**
+
+1.  **Update `src/playpi/__main__.py`**
+    *   Import the `..._cli` functions from `src/playpi/providers/google/cli.py` and `src/playpi/session_cli.py`.
+    *   Set up the `fire.Fire` object to map the command names to the new functions:
+        *   `google`: `google_research_cli` (for backward compatibility)
+        *   `gemi`: `gemi_cli`
+        *   `gemi_dr`: `gemi_dr_cli`
+        *   `test`: `test_session_cli`
+
+2.  **Update `pyproject.toml`**
+    *   In the `[project.scripts]` section, change the `playpi` entry point to `playpi.__main__:main`.
+
+### **Phase 4: Cleanup and Verification**
+
+1.  **Delete `src/playpi/cli.py`**
+    *   After confirming the new CLI works as expected, remove the old CLI file.
+
+2.  **Update Tests**
+    *   Modify existing CLI tests to target the new `__main__` entry point and command structure.
+    *   Add new tests for the `gemi` and `gemi_dr` commands, covering their specific argument handling and functionality.
+
+3.  **Update Documentation**
+    *   Update `README.md` and any other relevant documentation to reflect the new commands, their arguments, and usage examples.
+
+This plan ensures a clean, maintainable, and extensible CLI structure for PlayPi, with a clear separation between the CLI entry point and the provider-specific logic.

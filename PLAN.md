@@ -23,9 +23,10 @@ this_file: PLAN.md
 ### `gemi_dr` Command
 - **Purpose**: Execute multiple concurrent deep research tasks
 - **Function**: Calls `google_gemini_deep_research_multi`
-- **Input**: Reads JSON configuration from stdin
-- **Config Format**: List of research task configurations
-- **Behavior**: No CLI arguments, purely stdin-driven
+- **Input**: Reads JSON configuration from stdin (no CLI args allowed)
+- **Config Format**: List/dict payload matching `google_gemini_deep_research_multi` expectations, including prompt text, output path, and concurrency limits
+- **Behavior**: Refuse extra CLI flags, stream stdin, validate JSON before invoking provider, surface provider exceptions with clear exit codes
+- **Testing**: Add unit tests for stdin parsing + happy-path invocation (mock provider), plus failure cases for invalid JSON and missing keys
 
 ### `gemi` Command
 - **Purpose**: Execute single prompts with flexible input/output
@@ -35,14 +36,26 @@ this_file: PLAN.md
   - `--prompt`: Additional prompt text (appended to file_prompt if both provided)
   - `--deep`: Flag to use Deep Think mode instead of standard mode
   - `--output_file`: Path to save output (defaults to stdout)
-- **Behavior**: Combines file_prompt + prompt, processes with appropriate function
+- **Behavior**: Combines file_prompt + prompt in order, enforces at least one source of prompt text, selects deep think provider only when `--deep` is set, supports stdout fallback when `--output_file` omitted
+- **Testing**: Cover prompt concatenation logic, deep mode routing, stdout vs file output, and error handling for missing prompt content
 
 ### CLI Update Requirements
 1. **Preserve existing functionality**: Maintain current `google` command behavior
 2. **Add new commands**: Implement `gemi` and `gemi_dr` as described
 3. **Update imports**: Use new refactored function names throughout
-4. **Error handling**: Proper validation and user feedback
-5. **Documentation**: Update help text and examples
+4. **Error handling**: Proper validation and user feedback (invalid JSON, missing files, provider exceptions)
+5. **Documentation**: Update help text, README snippets, and CHANGELOG with new commands
+6. **Examples**: Provide minimal CLI usage samples in `examples/` or docs for both commands
+
+## CLI Structural Refactor Plan
+
+- **Stabilize Entry Point**: Create `src/playpi/__main__.py` as the sole Fire entry point mapping commands and delegating to provider callables so both `playpi` and `python -m playpi` resolve here.
+- **Relocate Command Logic**: Add `src/playpi/providers/google/cli_helpers.py` exporting thin wrappers (`google_research_command`, `gemi_command`, `gemi_dr_command`, `test_session_command`) that handle CLI-specific I/O, validation, and then call the async provider functions.
+- **Wire __main__**: Import the helper functions into `__main__.py` and register them in the Fire dictionary without embedding asyncio, JSON, or file logic in the entry point.
+- **Package Update**: Switch `[project.scripts] playpi` in `pyproject.toml` to point at `playpi.__main__:main`; optionally leave a deprecation shim in `src/playpi/cli.py` until downstream callers migrate.
+- **Command Enhancements**: Ensure `gemi_dr` reads and validates JSON from stdin, `gemi` enforces at least one prompt source and routes `--deep` requests to `google_gemini_ask_deep_think`, and legacy `google`/`test` behavior remains intact.
+- **Testing Strategy**: Add unit tests for helper parsing/writing logic, CLI smoke tests via `python -m playpi`, and record full suite results in `WORK.md` after running `uvx hatch test`.
+- **Docs & Cleanup**: Update README, CHANGELOG, PLAN/TODO, and examples for the new commands; remove or deprecate `src/playpi/cli.py` after validation while keeping room for future provider-specific wrappers.
 
 # Refactor PlayPi for Gemini Workflows (COMPLETED)
 

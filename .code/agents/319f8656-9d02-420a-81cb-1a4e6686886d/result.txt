@@ -1,0 +1,220 @@
+I'll analyze the existing CLI structure and provider layout, then propose a detailed plan for the CLI refactor. Let me start by examining the key files mentioned.
+
+Let me examine the current CLI implementation and the Google provider structure:
+
+Now let me examine the Google provider module:
+
+Let me check the gemini module to understand the available functions:
+
+Let me also check if there's already a `__main__.py` file:
+
+Let me look at the `__init__.py` file to see what's currently exported from the main playpi package:
+
+Now let me check the pyproject.toml to understand the current packaging and entry points:
+
+Now let me check the issue reference to understand the planned enhancements:
+
+Let me also check for any other provider modules to understand the current structure better:
+
+Let me also check if there are any other provider directories:
+
+Now I have a good understanding of the current structure. Let me create the detailed plan for the CLI refactor.
+
+Based on my analysis of the current codebase, I can now propose a detailed plan for the CLI refactor. Let me complete the current task and continue with the remaining items:
+
+## Detailed Plan for PlayPi CLI Refactor
+
+### Overview
+The goal is to replace the current Fire-based CLI in `src/playpi/cli.py` with a new Fire CLI defined in `src/playpi/__main__.py`. The `__main__.py` should remain thin, delegating all functional logic to provider modules (especially `src/playpi/providers/google/`).
+
+### Current State Analysis
+- **Current CLI**: `src/playpi/cli.py` contains `google_research()` and `test_session()` functions with inline logic
+- **Provider Functions**: `src/playpi/providers/google/gemini.py` contains the actual implementations
+- **Entry Point**: Currently configured as `playpi = "playpi.cli:main"` in pyproject.toml
+- **Upcoming Commands**: `gemi` and `gemi_dr` as specified in issues/105.md
+
+### 1. File Moves/Deletions
+
+**File Creation**:
+- Create `src/playpi/__main__.py` (new CLI entry point)
+
+**File Modifications**:
+- Keep `src/playpi/cli.py` as is initially, then potentially deprecate/remove after migration
+- Move command-specific logic from `cli.py` to appropriate provider modules
+
+**Files to Update**:
+- `src/playpi/providers/google/__init__.py` - Ensure all necessary functions are properly exported
+
+### 2. Packaging/Entry Points Updates
+
+**pyproject.toml changes**:
+- Update `[project.scripts]` section to change from `playpi = "playpi.cli:main"` to `playpi = "playpi.__main__:main"`
+- This ensures the `playpi` command points to the new entry point
+
+### 3. CLI Structure Design
+
+**New `src/playpi/__main__.py` structure**:
+- Minimal Fire wrapper that imports and exposes commands from provider modules
+- Should remain thin and delegate all functionality to providers
+- Export all commands related to different providers
+
+**Example structure**:
+```python
+# src/playpi/__main__.py
+import fire
+
+from playpi.providers.google import (
+    google_research_command,
+    gemi_command,
+    gemi_dr_command,
+    test_session_command,
+)
+
+def main():
+    """Main CLI entry point."""
+    fire.Fire({
+        "google": google_research_command,
+        "gemi": gemi_command,
+        "gemi_dr": gemi_dr_command,
+        "test": test_session_command,
+    })
+
+if __name__ == "__main__":
+    main()
+```
+
+### 4. Provider Function Adaptation
+
+**For Google provider functions** (in `src/playpi/providers/google/`):
+- Create thin CLI wrapper functions that handle CLI-specific concerns (output formatting, error handling, etc.)
+- These functions should accept CLI parameters and delegate to the actual implementation functions
+- Add new functions for `gemi` and `gemi_dr` commands as per issues/105.md
+
+### 5. Testing/Documentation Impacts
+
+- Update tests that depend on the CLI entry point
+- Ensure existing functionality remains the same for users
+- Update documentation examples to reflect the new structure
+- Add tests for new CLI commands (`gemi`, `gemi_dr`)
+
+### 6. Alignment with Upcoming Commands
+
+**For `gemi_dr` command**:
+- Should call `google_gemini_deep_research_multi`
+- Reads config in JSON format from stdin
+- Requires thin wrapper function in Google provider
+
+**For `gemi` command**:
+- Supports `--file_prompt` and `--prompt` args
+- Calls `google_gemini_ask` by default
+- Calls `google_gemini_ask_deep_think` if `--deep` flag is given
+- Outputs to `--output_file` or stdout
+- Requires thin wrapper function in Google provider
+
+### 4. Detailed Packaging/Entry Points Updates
+
+**pyproject.toml changes**:
+- Update `[project.scripts]` section from:
+  ```toml
+  [project.scripts]
+  playpi = "playpi.cli:main"
+  ```
+  to:
+  ```toml
+  [project.scripts]
+  playpi = "playpi.__main__:main"
+  ```
+
+**Alternative approach to consider**:
+- Instead of changing the package script entry point, we could modify the existing `playpi.cli` module to delegate to `__main__.py`, but changing the entry point directly is cleaner and matches the requirement to use `__main__.py` as the CLI entry point.
+
+**Consider both command-line and module execution**:
+- Ensure both `playpi` command and `python -m playpi` work consistently
+- The `__main__.py` approach naturally supports both execution methods
+
+### 5. Testing/Documentation Impacts
+
+**Testing Impacts**:
+- Update existing CLI tests to point to the new entry point (`__main__.py`)
+- Add tests for new CLI commands (`gemi`, `gemi_dr`)
+- Ensure backward compatibility testing for existing commands (`google`, `test`)
+- Test various execution methods: direct command (`playpi`) and module execution (`python -m playpi`)
+- Verify that error handling and output formatting remain consistent
+
+**Documentation Impacts**:
+- Update README.md examples to reflect the new CLI structure
+- Update any documentation that refers to the CLI interface
+- Add documentation for new commands (`gemi`, `gemi_dr`)
+- Ensure command-line help output remains informative and consistent
+- Update usage examples to reflect the new command structure
+
+**Compatibility Considerations**:
+- Ensure the API contract remains the same from the user's perspective
+- Maintain the same command names, arguments, and behavior
+- Only the internal implementation structure changes
+
+### 6. Detailed Plan for Alignment with Upcoming gemi/gemi_dr Commands
+
+**For the `gemi_dr` command (as per issues/105.md)**:
+- Create function `gemi_dr_command()` in `src/playpi/providers/google/`
+- Function should read JSON config from stdin
+- Function should call `google_gemini_deep_research_multi()` with the configuration
+- Function should handle JSON parsing, validation, and error reporting
+- Function should format and output results appropriately
+
+**For the `gemi` command (as per issues/105.md)**:
+- Create function `gemi_command()` in `src/playpi/providers/google/`
+- Support arguments: `--file_prompt`, `--prompt`, `--deep`, `--output_file`
+- If `--file_prompt` is provided, read its contents and append `--prompt` if also provided
+- If only `--prompt` is provided, use that directly
+- Call `google_gemini_ask()` by default
+- If `--deep` flag is given, call `google_gemini_ask_deep_think()` instead
+- Output to `--output_file` if provided, otherwise stdout
+- Handle all error cases and provide appropriate feedback
+
+**Implementation approach**:
+- Create thin CLI wrapper functions in `src/playpi/providers/google/cli_commands.py` (new module)
+- These functions should handle CLI-specific concerns (argument parsing, input/output handling, error formatting)
+- Delegate the actual work to existing functions in `gemini.py`
+- Export these new functions through the provider's `__init__.py`
+
+**Integration with the main CLI**:
+- The `src/playpi/__main__.py` will import and expose these new commands through Fire
+- The main CLI will have the structure: `{"google": ..., "gemi": ..., "gemi_dr": ..., "test": ...}`
+
+This plan ensures that:
+1. All command logic resides in provider modules (especially under `src/playpi/providers/google/`)
+2. `__main__.py` remains thin and only delegates to provider functions
+3. The new `gemi` and `gemi_dr` commands are properly integrated
+4. The existing `google` and `test` commands continue to work as before
+5. All functionality is properly tested and documented
+
+## Summary of the CLI Refactor Plan
+
+I've analyzed the current CLI structure and provider layout and created a detailed plan for migrating CLI responsibility into `src/playpi/__main__.py` using Fire. Here's the complete plan:
+
+### 1. File Structure Changes
+- Create new `src/playpi/__main__.py` as the thin CLI entry point
+- Move command-specific logic from `src/playpi/cli.py` to provider modules
+- Create new functions for upcoming `gemi` and `gemi_dr` commands in `src/playpi/providers/google/`
+
+### 2. Packaging Updates
+- Update `pyproject.toml` to change entry point from `playpi.cli:main` to `playpi.__main__:main`
+- Ensure both direct command execution (`playpi`) and module execution (`python -m playpi`) work
+
+### 3. Provider Module Structure
+- Create CLI wrapper functions in `src/playpi/providers/google/cli_commands.py` (or similar)
+- These wrappers will handle CLI-specific concerns (I/O, error formatting) while delegating the actual work to existing functions in `gemini.py`
+- Functions will include `google_research_command`, `gemi_command`, `gemi_dr_command`, and `test_session_command`
+
+### 4. Testing & Documentation
+- Update existing tests to work with the new structure
+- Add tests for new commands
+- Update documentation examples to reflect changes
+- Maintain backward compatibility for existing functionality
+
+### 5. New Command Implementations
+- `gemi_dr`: Reads JSON config from stdin, calls `google_gemini_deep_research_multi`
+- `gemi`: Supports `--file_prompt`, `--prompt`, `--deep`, `--output_file` args; calls appropriate Google functions based on options
+
+This plan ensures all command logic resides in provider modules while keeping `__main__.py` thin as required, and properly integrates the upcoming `gemi`/`gemi_dr` commands.

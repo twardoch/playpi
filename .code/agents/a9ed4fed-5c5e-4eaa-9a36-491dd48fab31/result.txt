@@ -1,0 +1,302 @@
+## Detailed CLI Migration Plan: From cli.py to __main__.py
+
+### Executive Summary
+
+Migrate the PlayPi CLI from `src/playpi/cli.py` to a new `src/playpi/__main__.py` architecture that maintains thin Fire-based command wrappers while delegating all business logic to provider-specific modules. This ensures clean separation of concerns and enables the addition of new `gemi` and `gemi_dr` commands.
+
+### Current State Analysis
+
+**Existing Structure:**
+- `src/playpi/cli.py` contains:
+  - Fire-based CLI with `google` and `test` commands
+  - Inline async logic and error handling
+  - Direct imports from providers
+  - Business logic mixed with CLI presentation
+
+**Provider Structure:**
+- `src/playpi/providers/google/gemini.py` exports:
+  - `google_gemini_deep_research` (renamed from `google_deep_research`)
+  - `google_gemini_deep_research_full`
+  - `google_gemini_deep_research_multi`
+  - `google_gemini_ask`
+  - `google_gemini_ask_deep_think`
+  - `google_gemini_generate_image`
+
+### Proposed Architecture
+
+#### 1. **File Structure**
+
+```
+src/playpi/
+├── __main__.py                    # NEW: Thin Fire CLI entry point
+├── cli.py                          # DEPRECATED: To be removed
+├── providers/
+│   └── google/
+│       ├── __init__.py            # Existing exports
+│       ├── gemini.py              # Existing provider functions  
+│       ├── auth.py                # Existing auth logic
+│       └── cli_helpers.py        # NEW: CLI command implementations
+```
+
+#### 2. **Implementation Plan**
+
+**Phase 1: Create Provider CLI Helpers**
+
+Create `src/playpi/providers/google/cli_helpers.py`:
+```python
+"""CLI command implementations for Google provider."""
+
+import asyncio
+import json
+import sys
+from pathlib import Path
+from rich.console import Console
+from playpi.exceptions import PlayPiError
+from playpi.providers.google.gemini import (
+    google_gemini_deep_research,
+    google_gemini_ask,
+    google_gemini_ask_deep_think,
+    google_gemini_deep_research_multi
+)
+from playpi.config import PlayPiConfig
+from playpi.session import create_session
+
+console = Console()
+
+def google_research_command(
+    prompt: str,
+    *,
+    output: str | None = None,
+    headless: bool = True,
+    timeout: int = 600,
+    verbose: bool = False,
+) -> None:
+    """Perform Google Gemini Deep Research.
+    
+    Delegates to google_gemini_deep_research provider function.
+    """
+    try:
+        result = asyncio.run(
+            google_gemini_deep_research(
+                prompt,
+                headless=headless,
+                timeout=timeout,
+                verbose=verbose,
+            )
+        )
+        
+        if output:
+            Path(output).write_text(result, encoding="utf-8")
+            console.print(f"✅ Research saved to: {output}")
+        else:
+            console.print("\n📄 Research Results:")
+            console.print(result)
+            
+    except PlayPiError as e:
+        console.print(f"❌ Error: {e}", style="red")
+        sys.exit(1)
+    except KeyboardInterrupt:
+        console.print("\n⚠️ Research interrupted", style="yellow")
+        sys.exit(1)
+
+def gemi_command(
+    *,
+    file_prompt: str | None = None,
+    prompt: str | None = None,
+    deep: bool = False,
+    output_file: str | None = None,
+    headless: bool = True,
+    timeout: int = 600,
+    verbose: bool = False,
+) -> None:
+    """Execute Gemini prompt with flexible input/output.
+    
+    Delegates to google_gemini_ask or google_gemini_ask_deep_think.
+    """
+    # Validate inputs
+    if not file_prompt and not prompt:
+        console.print("❌ Error: Either --file_prompt or --prompt required", style="red")
+        sys.exit(1)
+    
+    # Combine prompts
+    full_prompt = ""
+    if file_prompt:
+        full_prompt = Path(file_prompt).read_text()
+    if prompt:
+        full_prompt = f"{full_prompt}\n{prompt}" if full_prompt else prompt
+    
+    # Select function based on deep flag
+    func = google_gemini_ask_deep_think if deep else google_gemini_ask
+    
+    try:
+        result = asyncio.run(
+            func(
+                full_prompt,
+                headless=headless,
+                timeout=timeout,
+                verbose=verbose,
+            )
+        )
+        
+        if output_file:
+            Path(output_file).write_text(result, encoding="utf-8")
+            console.print(f"✅ Output saved to: {output_file}")
+        else:
+            console.print(result)
+            
+    except PlayPiError as e:
+        console.print(f"❌ Error: {e}", style="red")
+        sys.exit(1)
+
+def gemi_dr_command() -> None:
+    """Execute multiple concurrent deep research tasks.
+    
+    Reads JSON config from stdin, delegates to google_gemini_deep_research_multi.
+    """
+    try:
+        # Read JSON from stdin
+        config_str = sys.stdin.read()
+        config = json.loads(config_str)
+        
+        # Validate config structure
+        if not isinstance(config, list):
+            raise ValueError("Config must be a JSON array")
+        
+        # Execute multi-research
+        results = asyncio.run(google_gemini_deep_research_multi(config))
+        
+        console.print("✅ Multi-research completed successfully")
+        for i, result in enumerate(results):
+            console.print(f"  Task {i+1}: {result}")
+            
+    except json.JSONDecodeError as e:
+        console.print(f"❌ Invalid JSON: {e}", style="red")
+        sys.exit(1)
+    except Exception as e:
+        console.print(f"❌ Error: {e}", style="red")
+        sys.exit(1)
+
+def test_session_command() -> None:
+    """Test basic browser session functionality."""
+    try:
+        async def _test():
+            config = PlayPiConfig(verbose=True)
+            async with create_session(config) as session:
+                page = await session.get_page()
+                await page.goto("https://httpbin.org/json")
+                title = await page.title()
+                console.print(f"✅ Browser session test passed! Page title: {title}")
+        
+        asyncio.run(_test())
+        
+    except Exception as e:
+        console.print(f"❌ Session test failed: {e}", style="red")
+        sys.exit(1)
+```
+
+**Phase 2: Create __main__.py**
+
+Create `src/playpi/__main__.py`:
+```python
+"""PlayPi CLI entry point - thin Fire wrappers delegating to providers."""
+
+import fire
+from playpi.providers.google.cli_helpers import (
+    google_research_command,
+    gemi_command,
+    gemi_dr_command,
+    test_session_command
+)
+
+def main() -> None:
+    """Main CLI entry point using Fire."""
+    fire.Fire({
+        "google": google_research_command,
+        "gemi": gemi_command,
+        "gemi_dr": gemi_dr_command,
+        "test": test_session_command,
+    })
+
+if __name__ == "__main__":
+    main()
+```
+
+**Phase 3: Update Package Configuration**
+
+Update `pyproject.toml`:
+```toml
+[project.scripts]
+playpi = "playpi.__main__:main"  # Changed from playpi.cli:main
+```
+
+### Migration Steps
+
+1. **Create cli_helpers.py** with all command implementations
+2. **Create __main__.py** with minimal Fire setup
+3. **Test all commands** work identically to current implementation
+4. **Update pyproject.toml** entry point
+5. **Add deprecation warning** to cli.py
+6. **Update documentation** with new commands
+7. **After validation period**, delete cli.py
+
+### Testing Requirements
+
+#### New Test Files
+- `tests/test_cli_helpers.py` - Unit tests for helper functions
+- `tests/test_gemi_commands.py` - Tests for new gemi/gemi_dr commands
+
+#### Test Coverage
+- Existing `google` command backward compatibility
+- New `gemi` command with all flag combinations
+- `gemi_dr` stdin JSON parsing and validation
+- Error handling and exit codes
+- Help text generation
+
+### Documentation Updates
+
+#### README.md Additions
+```bash
+# New gemi command examples
+playpi gemi --prompt "Explain quantum computing" --output_file result.md
+playpi gemi --file_prompt base.txt --prompt "Additional context" --deep
+playpi gemi --file_prompt query.txt  # Output to stdout
+
+# New gemi_dr command example
+echo '[{"prompt": "Research AI ethics", "output_path": "ai_ethics.md"}]' | playpi gemi_dr
+```
+
+#### CHANGELOG.md Entry
+```markdown
+### Added
+- New `gemi` command for flexible Gemini prompts with file I/O
+- New `gemi_dr` command for concurrent multi-research via JSON
+- Migrated CLI to __main__.py with provider delegation architecture
+
+### Changed  
+- CLI entry point moved from `playpi.cli:main` to `playpi.__main__:main`
+- All CLI logic moved to provider-specific helper modules
+```
+
+### Benefits of This Architecture
+
+1. **Separation of Concerns**: CLI only handles argument parsing, providers handle logic
+2. **Testability**: Provider helpers can be unit tested without Fire
+3. **Extensibility**: Easy to add new commands or providers
+4. **Maintainability**: Clear boundaries between layers
+5. **Future-Proof**: Ready for additional providers (OpenAI, Anthropic, etc.)
+
+### Risk Mitigation
+
+- **Backward Compatibility**: Preserve exact behavior of existing commands
+- **Gradual Migration**: Test alongside existing cli.py before switching
+- **Clear Documentation**: Migration guide for any custom integrations
+- **Version Control**: Tag releases before/after migration
+
+### Success Criteria
+
+✅ All existing commands work identically  
+✅ New gemi/gemi_dr commands functional  
+✅ Tests pass with >80% coverage  
+✅ Documentation updated and clear  
+✅ Clean separation between CLI and provider layers  
+✅ No business logic in __main__.py
