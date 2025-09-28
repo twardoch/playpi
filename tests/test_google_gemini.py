@@ -107,8 +107,7 @@ async def test_google_gemini_generate_image(mock_download, mock_create_session):
     with patch("playpi.providers.google.gemini._activate_image_generation", new_callable=AsyncMock) as mock_activate,
          patch("playpi.providers.google.gemini._enter_prompt", new_callable=AsyncMock) as mock_enter_prompt,
          patch("playpi.providers.google.gemini._click_send_button", new_callable=AsyncMock) as mock_click_send,
-         patch("playpi.providers.google.gemini._wait_for_image_generation", new_callable=AsyncMock) as mock_wait:
-        result = await google_gemini_generate_image("a cat", download_path="/fake")
+         patch("playpi.providers.google.gemini._wait_for_image_generation", new_callable=AsyncMock) as mock_wait:        result = await google_gemini_generate_image("a cat", download_path="/fake")
 
         assert result == "/fake/image.png"
         mock_activate.assert_called_once_with(mock_page)

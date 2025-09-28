@@ -1,5 +1,3 @@
-this_file: src/playpi/providers/google/auth.py
----
 """Google authentication for PlayPi."""
 
 import asyncio

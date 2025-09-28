@@ -5,7 +5,6 @@ import os
 import pathlib
 import shutil
 import sys
-from typing import Dict, List, Union
 
 from loguru import logger
 from playwright.async_api import Page

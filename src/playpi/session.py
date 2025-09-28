@@ -27,7 +27,7 @@ class PlayPiSession:
         self._browser: Browser | None = None
         self._context: BrowserContext | None = None
         self._context_owned = False
-            self._pages: list[Page] = []
+        self._pages: list[Page] = []
 
     async def __aenter__(self) -> Self:
         await self.start()
