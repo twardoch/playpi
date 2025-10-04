@@ -9,10 +9,11 @@ import sys
 from loguru import logger
 from playwright.async_api import Page
 from playwright.async_api import TimeoutError as PlaywrightTimeoutError
+from playwrightauthor.helpers.extraction import async_extract_with_fallbacks
+from playwrightauthor.utils.html import html_to_markdown
 
 from playpi.config import PlayPiConfig
 from playpi.exceptions import PlayPiTimeoutError, ProviderError
-from playpi.html import extract_research_content, html_to_markdown
 from playpi.providers.google.auth import ensure_authenticated
 from playpi.session import create_session
 
@@ -180,7 +181,23 @@ async def _google_gemini_deep_research_on_page(page: Page, prompt: str, **kwargs
 
     # Extract results
     logger.info("📄 Extracting research results...")
-    html_content = await extract_research_content(page)
+    # Use fallback selectors to extract content
+    html_content = await async_extract_with_fallbacks(
+        page,
+        selectors=[
+            '[data-test-id="scroll-container"]',
+            ".research-content",
+            ".response-container",
+            'main [role="main"]',
+            "article",
+            "body",
+        ],
+        attribute="inner_html",
+    )
+    if not html_content:
+        logger.error("Failed to extract research content")
+        msg = "No content found in research results"
+        raise ProviderError(msg)
     markdown_result = html_to_markdown(html_content)
 
     logger.info("✅ Google Deep Research completed successfully!")
@@ -363,7 +380,23 @@ async def google_gemini_ask_deep_think(prompt: str, **kwargs):
 
             # Extract results
             logger.info("📄 Extracting deep think results...")
-            html_content = await extract_research_content(page)
+            # Use fallback selectors to extract content
+            html_content = await async_extract_with_fallbacks(
+                page,
+                selectors=[
+                    '[data-test-id="scroll-container"]',
+                    ".research-content",
+                    ".response-container",
+                    'main [role="main"]',
+                    "article",
+                    "body",
+                ],
+                attribute="inner_html",
+            )
+            if not html_content:
+                logger.error("Failed to extract deep think content")
+                msg = "No content found in deep think results"
+                raise ProviderError(msg)
             markdown_result = html_to_markdown(html_content)
 
             logger.info("✅ Google Gemini Deep Think completed successfully!")
